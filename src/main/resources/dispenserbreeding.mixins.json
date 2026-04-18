@@ -3,7 +3,8 @@
 	"package": "com.dispenserbreeding.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"ItemDispenserBehaviorMixin"
+		"ItemDispenserBehaviorMixin",
+		"MobMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
