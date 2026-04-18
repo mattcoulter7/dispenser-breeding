@@ -33,8 +33,8 @@ jobs:
           files: |
             build/libs/dispenserbreeding-*.jar
 
-          name: Dispenser Breeding ${{ github.event.release.tag_name }}
-          version: ${{ github.event.release.tag_name }}
+          name: "[Fabric] ${{ github.event.release.target_commitish }}-${{ github.event.release.tag_name }}"
+          version: "${{ github.event.release.target_commitish }}-${{ github.event.release.tag_name }}-fabric"
 
           loaders: fabric
           game-versions: 26.1
