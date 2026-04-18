@@ -3,9 +3,23 @@ name: Build and Publish
 on:
   pull_request:
   push:
+    branches:
+      - main
+      - '*.*.*'
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      publish_artifacts:
+        description: "Build and publish to Modrinth / GitHub Release"
+        type: boolean
+        required: true
+        default: true
+      update_metadata:
+        description: "Update Modrinth README and icon"
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: write
@@ -13,6 +27,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    if: github.event_name != 'workflow_dispatch' || inputs.publish_artifacts || inputs.update_metadata
 
     steps:
       - name: Checkout repository
@@ -43,7 +58,9 @@ jobs:
   publish:
     runs-on: ubuntu-24.04
     needs: build
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_artifacts)
 
     steps:
       - name: Checkout repository
@@ -90,7 +107,9 @@ jobs:
   update-modrinth-metadata:
     runs-on: ubuntu-24.04
     needs: build
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && inputs.update_metadata)
 
     steps:
       - name: Checkout repository
