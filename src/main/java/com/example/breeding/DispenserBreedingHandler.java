@@ -1,11 +1,11 @@
-package com.example.dispenser;
+package com.example.breeding;
 
 import java.util.Comparator;
 import java.util.List;
 
+import net.minecraft.block.BlockState;
 import net.minecraft.block.DispenserBlock;
-import net.minecraft.block.dispenser.ItemDispenserBehavior;
-import net.minecraft.entity.passive.CowEntity;
+import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPointer;
@@ -13,36 +13,34 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
-public final class WheatBreedingDispenserBehavior extends ItemDispenserBehavior {
-	// Slightly larger than one block so we catch cows standing close to the face.
+public final class DispenserBreedingHandler {
 	private static final double RANGE_FORWARD = 1.75D;
 	private static final double RANGE_SIDE = 0.9D;
 	private static final double RANGE_VERTICAL = 1.0D;
 
-	@Override
-	protected ItemStack dispenseSilently(BlockPointer pointer, ItemStack stack) {
+	private DispenserBreedingHandler() {
+	}
+
+	public static boolean tryBreedFromDispenser(BlockPointer pointer, ItemStack stack) {
 		if (stack.isEmpty()) {
-			return stack;
+			return false;
 		}
 
 		ServerWorld world = pointer.world();
-		Direction facing = pointer.state().get(DispenserBlock.FACING);
+		BlockState state = pointer.state();
+		Direction facing = state.get(DispenserBlock.FACING);
 
-		CowEntity target = findBreedableCow(world, pointer, facing, stack);
-
+		AnimalEntity target = findBreedableAnimal(world, pointer, facing, stack);
 		if (target == null) {
-			// No valid cow found, so preserve vanilla behaviour and spit the wheat out.
-			return super.dispenseSilently(pointer, stack);
+			return false;
 		}
 
-		// Consume one wheat and trigger vanilla love mode.
 		stack.decrement(1);
 		target.lovePlayer(null);
-
-		return stack;
+		return true;
 	}
 
-	private CowEntity findBreedableCow(
+	private static AnimalEntity findBreedableAnimal(
 		ServerWorld world,
 		BlockPointer pointer,
 		Direction facing,
@@ -67,22 +65,22 @@ public final class WheatBreedingDispenserBehavior extends ItemDispenserBehavior 
 			facing.getOffsetZ() * (RANGE_FORWARD - 1.0D)
 		);
 
-		List<CowEntity> candidates = world.getEntitiesByClass(
-			CowEntity.class,
+		List<AnimalEntity> candidates = world.getEntitiesByClass(
+			AnimalEntity.class,
 			searchBox,
-			cow -> isValidTarget(cow, breedingStack)
+			animal -> isValidTarget(animal, breedingStack)
 		);
 
 		return candidates.stream()
-			.min(Comparator.comparingDouble(cow -> cow.squaredDistanceTo(dispenseCenter)))
+			.min(Comparator.comparingDouble(animal -> animal.squaredDistanceTo(dispenseCenter)))
 			.orElse(null);
 	}
 
-	private boolean isValidTarget(CowEntity cow, ItemStack breedingStack) {
-		return cow.isAlive()
-			&& !cow.isBaby()
-			&& !cow.isInLove()
-			&& cow.canEat()
-			&& cow.isBreedingItem(breedingStack);
+	private static boolean isValidTarget(AnimalEntity animal, ItemStack breedingStack) {
+		return animal.isAlive()
+			&& !animal.isBaby()
+			&& !animal.isInLove()
+			&& animal.canEat()
+			&& animal.isBreedingItem(breedingStack);
 	}
 }

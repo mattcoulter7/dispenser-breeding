@@ -1,9 +1,6 @@
 package com.example;
 
-import com.example.dispenser.WheatBreedingDispenserBehavior;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.block.DispenserBlock;
-import net.minecraft.item.Items;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +15,6 @@ public final class ExampleMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		DispenserBlock.registerBehavior(Items.WHEAT, new WheatBreedingDispenserBehavior());
-		LOGGER.info("Registered dispenser breeding behaviour for wheat.");
+		LOGGER.info("Generic dispenser breeding mod initialised.");
 	}
 }
