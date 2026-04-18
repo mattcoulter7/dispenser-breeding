@@ -6,4 +6,10 @@ public final class DispenserBreedingConfig {
 	public double rangeVertical = 1.0D;
 
 	public boolean enableDispenserBreeding = true;
+
+	public boolean enableGroundPickupBreeding = true;
+	public double groundPickupSearchRadius = 8.0D;
+	public double groundPickupConsumeRadius = 1.5D;
+	public int groundPickupScanIntervalTicks = 10;
+	public double groundPickupMoveSpeed = 1.0D;
 }
