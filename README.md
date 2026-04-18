@@ -5,17 +5,29 @@
 </p>
 
 <p align="center">
+  <!-- Build -->
   <a href="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml">
     <img src="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml/badge.svg" alt="Build Status">
   </a>
+
+  <!-- Modrinth -->
   <a href="https://modrinth.com/mod/dispenser-breeding">
-    <img src="https://img.shields.io/modrinth/dt/zlKk8V6R?logo=modrinth&label=downloads" alt="Modrinth Downloads">
+    <img src="https://img.shields.io/badge/Modrinth-Download-1bd96a?logo=modrinth&logoColor=white" alt="Modrinth">
   </a>
-  <a href="https://modrinth.com/mod/dispenser-breeding/versions">
-    <img src="https://img.shields.io/modrinth/game-versions/zlKk8V6R?label=minecraft" alt="Minecraft Versions">
+
+  <!-- GitHub Releases -->
+  <a href="https://github.com/mattcoulter7/dispenser-breeding/releases">
+    <img src="https://img.shields.io/github/v/release/mattcoulter7/dispenser-breeding?label=release&color=blue" alt="GitHub Release">
   </a>
-  <a href="https://modrinth.com/mod/dispenser-breeding/versions">
-    <img src="https://img.shields.io/modrinth/loaders/zlKk8V6R?label=loader" alt="Supported Loaders">
+
+  <!-- Fabric -->
+  <a href="https://fabricmc.net/use/server/">
+    <img src="https://img.shields.io/badge/Loader-Fabric-blueviolet" alt="Fabric">
+  </a>
+
+  <!-- Minecraft -->
+  <a href="https://www.minecraft.net/en-us">
+    <img src="https://img.shields.io/badge/Minecraft-26.1-62B47A?logo=minecraft&logoColor=white" alt="Minecraft Version">
   </a>
 </p>
 
