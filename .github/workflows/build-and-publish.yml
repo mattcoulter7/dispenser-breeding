@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: build
     if: |
-      github.event_name == 'release' ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'workflow_dispatch' && inputs.update_metadata)
 
     steps:
