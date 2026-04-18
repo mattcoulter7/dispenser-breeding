@@ -1,5 +1,6 @@
 package com.dispenserbreeding;
 
+import com.dispenserbreeding.config.ConfigManager;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ public final class DispenserBreedingMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ConfigManager.load();
 		LOGGER.info("Dispenser Breeding mod initialised.");
 	}
 }
