@@ -1,4 +1,4 @@
-# 🐄 Dispenser Breeding
+<p align="center"> <a href="https://youtu.be/XmVLSE-e-2Q"> <img src="https://img.youtube.com/vi/XmVLSE-e-2Q/maxresdefault.jpg" alt="Watch the video" width="600"> </a> </p>
 
 <p align="center">
   Automate Animal breeding via dispensers.
@@ -32,6 +32,8 @@
 </p>
 
 ---
+
+# 🐄 Dispenser Breeding
 
 Dispenser Breeding adds simple, server-side breeding automation to Minecraft.
 
