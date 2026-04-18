@@ -17,19 +17,20 @@ public abstract class MobMixin {
 	protected GoalSelector goalSelector;
 
 	@Unique
-	private boolean dispenserbreeding$groundGoalAdded = false;
+	private boolean dispenserbreeding$groundGoalChecked = false;
 
-	@Inject(method = "registerGoals", at = @At("TAIL"))
-	private void dispenserbreeding$addGroundBreedingGoal(CallbackInfo ci) {
-		if (dispenserbreeding$groundGoalAdded) {
+	@Inject(method = "tick", at = @At("TAIL"))
+	private void dispenserbreeding$ensureGroundBreedingGoal(CallbackInfo ci) {
+		if (dispenserbreeding$groundGoalChecked) {
 			return;
 		}
+
+		dispenserbreeding$groundGoalChecked = true;
 
 		if (!(((Object) this) instanceof Animal animal)) {
 			return;
 		}
 
 		goalSelector.addGoal(5, new GroundBreedingItemGoal(animal));
-		dispenserbreeding$groundGoalAdded = true;
 	}
 }
