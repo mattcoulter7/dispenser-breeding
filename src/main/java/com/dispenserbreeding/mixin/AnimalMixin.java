@@ -25,7 +25,7 @@ public abstract class AnimalMixin {
 		}
 
 		Animal self = (Animal) (Object) this;
-		goalSelector.add(5, new GroundBreedingItemGoal(self));
+		goalSelector.addGoal(5, new GroundBreedingItemGoal(self));
 		dispenserbreeding$groundGoalAdded = true;
 	}
 }
