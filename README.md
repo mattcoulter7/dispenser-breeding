@@ -1,57 +1,120 @@
 # 🐄 Dispenser Breeding
 
-Automate animal breeding in Minecraft using dispensers.
+<p align="center">
+  Automate Animal breeding via dispensers.
+</p>
 
-With this mod installed, dispensers can feed nearby animals automatically using their normal breeding food. No more manual feeding — just hook up some redstone and let it run.
+<p align="center">
+  <!-- Build -->
+  <a href="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml">
+    <img src="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml/badge.svg" alt="Build Status">
+  </a>
+
+  <!-- Modrinth -->
+  <a href="https://modrinth.com/mod/dispenser-breeding">
+    <img src="https://img.shields.io/badge/Modrinth-Download-1bd96a?logo=modrinth&logoColor=white" alt="Modrinth">
+  </a>
+
+  <!-- GitHub Releases -->
+  <a href="https://github.com/mattcoulter7/dispenser-breeding/releases">
+    <img src="https://img.shields.io/github/v/release/mattcoulter7/dispenser-breeding?label=release&color=blue" alt="GitHub Release">
+  </a>
+
+  <!-- Fabric -->
+  <a href="https://fabricmc.net/use/server/">
+    <img src="https://img.shields.io/badge/Loader-Fabric-blueviolet" alt="Fabric">
+  </a>
+
+  <!-- Minecraft -->
+  <a href="https://www.minecraft.net/en-us">
+    <img src="https://img.shields.io/badge/Minecraft-26.1-62B47A?logo=minecraft&logoColor=white" alt="Minecraft Version">
+  </a>
+</p>
+
+---
+
+Dispenser Breeding adds simple, server-side breeding automation to Minecraft.
+
+Dispensers can instantly feed nearby animals using their normal breeding food, and animals can also detect valid breeding items dropped on the ground, walk to them, and consume them automatically.
+
+The result is a breeding system that feels vanilla, works naturally in farms, and requires no client-side installation.
+
+---
+
+## 🧠 Example use cases
+
+- 🏭 Fully automated animal breeding pens  
+- ⚡ Redstone-powered breeding systems  
+- 🌾 Semi-automatic farms where food is dropped into enclosures  
+- 🐑 Passive breeding setups without manual feeding  
 
 ---
 
 ## ✨ Features
 
-* 🐑 **Works with all animals**
-  Any animal that can normally be bred (cows, sheep, pigs, chickens, etc.) will work automatically.
+- 🐑 **Works with vanilla breeding rules**  
+  Animals only respond to their normal breeding food.
 
-* 🌾 **Uses vanilla breeding food**
-  The mod uses Minecraft’s built-in logic, so animals only accept the correct items (e.g. wheat for cows, carrots for pigs).
+- ⚡ **Dispenser-based breeding**  
+  If a dispenser fires a valid breeding item at a nearby animal, the animal is fed instantly.
 
-* ⚡ **Simple automation**
-  Place a dispenser facing animals, add food, power it — done.
+- 🌾 **Ground item breeding**  
+  Animals detect dropped breeding food, walk to it, consume one item, and enter love mode.
 
-* 🖥️ **Server-side mod**
-  Only needs to be installed on the server. Clients do not need the mod.
+- 🐄 **Supports all standard animals**  
+  Cows, sheep, pigs, chickens, and more — no setup required.
+
+- 🖥️ **Server-side only**  
+  No client install needed.
+
+- ⚙️ **Configurable**  
+  Behaviour can be tuned via a JSON5 config file.
 
 ---
 
-## 🧠 How It Works
+## 🔧 How it works
+
+### Dispenser feeding
 
 When a dispenser fires:
 
-* If a nearby animal can be bred using that item → it is fed instantly
-* If not → the item is dispensed normally
+- If a nearby animal can be bred → it is fed instantly  
+- Otherwise → the item is dispensed normally  
 
-This means it behaves exactly like vanilla, just smarter.
+---
+
+### Ground item feeding
+
+Animals will:
+
+- Detect nearby breeding items  
+- Walk towards valid food  
+- Consume **one item** from the stack  
+- Enter love mode ❤️  
+
+Works with:
+- Dispenser-dropped items  
+- Player-dropped items  
 
 ---
 
 ## 📦 Installation
 
-### Fabric (Required)
+### Requirements
 
-This mod requires **Fabric Loader** and **Fabric API**.
+- **Minecraft:** 26.1  
+- **Loader:** Fabric  
+- **Dependency:** Fabric API  
 
-### Install Steps
+### Standard installation
 
-1. Install Fabric for your Minecraft version
-2. Download:
-   * Dispenser Breeding mod [https://modrinth.com/mod/dispenser-breeding](https://modrinth.com/mod/dispenser-breeding)
-3. Drop `.jar` files into your `mods` folder
-4. Launch the game/server
-
----
+1. Install Fabric  
+2. Download the mod → https://modrinth.com/mod/dispenser-breeding  
+3. Drop the `.jar` into your `mods` folder  
+4. Ensure Fabric API is installed  
+5. Start your game/server  
 
 ### 🐳 Docker (itzg/minecraft-server)
-
-If you're running a Fabric server via Docker, you can install it like this:
 
 ```yaml
 - name: VERSION
@@ -62,32 +125,46 @@ If you're running a Fabric server via Docker, you can install it like this:
   value: |
     fabric-api
     dispenserbreeding
+````
+
+---
+
+## ⚙️ Configuration
+
+A config file is generated automatically:
+
+```
+config/dispenserbreeding.json5
 ```
 
----
+You can tweak:
 
-## 🔗 Download
-
-👉 [https://modrinth.com/mod/dispenser-breeding](https://modrinth.com/mod/dispenser-breeding)
-
----
-
-## 🚧 What's Coming
-
-* ⚙️ Config file (JSON) to tweak behaviour
-* 🐄 Animals can pick up breeding items from the ground
-* 🎯 More control over range and targeting
+* 🔭 Dispenser range
+* 🐄 Enable/disable breeding features
+* 🌾 Ground item detection radius
+* ⚡ Movement speed & scan frequency
 
 ---
 
-## 💡 Tips
+## 📥 Download
 
-* Keep animals close to the dispenser for best results
-* Use redstone clocks for continuous breeding
-* Works great with farms and mob pens
+* Modrinth → [https://modrinth.com/mod/dispenser-breeding](https://modrinth.com/mod/dispenser-breeding)
+* GitHub → [https://github.com/mattcoulter7/dispenser-breeding](https://github.com/mattcoulter7/dispenser-breeding)
+
+---
+
+## 🚧 Development status
+
+Supported versions:
+
+* 26.1
+* 26.1.1
+* 26.1.2
+
+Built and published automatically via GitHub Actions.
 
 ---
 
 ## ❤️ Credits
 
-Built with Fabric for modern Minecraft.
+Built with Fabric and designed to feel as close to vanilla as possible.
