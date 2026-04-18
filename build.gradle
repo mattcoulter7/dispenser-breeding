@@ -34,7 +34,7 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	implementation "blue.endless:jankson:1.2.3"
+	implementation include("blue.endless:jankson:1.2.3")
 	
 }
 
