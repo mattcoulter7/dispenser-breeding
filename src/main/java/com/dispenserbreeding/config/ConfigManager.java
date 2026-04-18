@@ -1,6 +1,7 @@
 package com.dispenserbreeding.config;
 
 import blue.endless.jankson.Jankson;
+import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.api.SyntaxError;
 
@@ -50,7 +51,7 @@ public final class ConfigManager {
 	private static void save(Path configPath) {
 		try {
 			Files.createDirectories(configPath.getParent());
-			JsonObject json = JANKSON.toJson(config);
+			JsonElement json = JANKSON.toJson(config);
 			Files.writeString(configPath, json.toJson(true, true), StandardCharsets.UTF_8);
 		} catch (IOException ignored) {
 		}
