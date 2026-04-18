@@ -1,6 +1,6 @@
-package com.example.mixin;
+package com.dispenserbreeding.mixin;
 
-import com.example.breeding.DispenserBreedingHandler;
+import com.dispenserbreeding.breeding.DispenserBreedingHandler;
 import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.core.dispenser.DefaultDispenseItemBehavior;
 import net.minecraft.world.item.ItemStack;

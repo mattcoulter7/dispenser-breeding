@@ -1,4 +1,4 @@
-package com.example.breeding;
+package com.dispenserbreeding.breeding;
 
 import java.util.Comparator;
 import java.util.List;
