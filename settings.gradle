@@ -10,4 +10,4 @@ pluginManagement {
 }
 
 // Should match your project name
-rootProject.name = 'dispenser-breeding'
+rootProject.name = 'dispenserbreeding'
