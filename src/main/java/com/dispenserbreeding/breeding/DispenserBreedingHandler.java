@@ -3,6 +3,7 @@ package com.dispenserbreeding.breeding;
 import java.util.Comparator;
 import java.util.List;
 
+import com.dispenserbreeding.config.ConfigManager;
 import net.minecraft.core.Direction;
 import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.server.level.ServerLevel;
@@ -13,15 +14,11 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public final class DispenserBreedingHandler {
-	private static final double RANGE_FORWARD = 1.75D;
-	private static final double RANGE_SIDE = 0.9D;
-	private static final double RANGE_VERTICAL = 1.0D;
-
 	private DispenserBreedingHandler() {
 	}
 
 	public static boolean tryBreedFromDispenser(BlockSource source, ItemStack stack) {
-		if (stack.isEmpty()) {
+		if (stack.isEmpty() || !ConfigManager.get().enableDispenserBreeding) {
 			return false;
 		}
 
@@ -51,16 +48,16 @@ public final class DispenserBreedingHandler {
 		);
 
 		AABB searchBox = new AABB(
-			dispenseCenter.x - RANGE_SIDE,
-			dispenseCenter.y - RANGE_VERTICAL,
-			dispenseCenter.z - RANGE_SIDE,
-			dispenseCenter.x + RANGE_SIDE,
-			dispenseCenter.y + RANGE_VERTICAL,
-			dispenseCenter.z + RANGE_SIDE
+			dispenseCenter.x - rangeSide(),
+			dispenseCenter.y - rangeVertical(),
+			dispenseCenter.z - rangeSide(),
+			dispenseCenter.x + rangeSide(),
+			dispenseCenter.y + rangeVertical(),
+			dispenseCenter.z + rangeSide()
 		).expandTowards(
-			facing.getStepX() * (RANGE_FORWARD - 1.0D),
-			facing.getStepY() * (RANGE_FORWARD - 1.0D),
-			facing.getStepZ() * (RANGE_FORWARD - 1.0D)
+			facing.getStepX() * (rangeForward() - 1.0D),
+			facing.getStepY() * (rangeForward() - 1.0D),
+			facing.getStepZ() * (rangeForward() - 1.0D)
 		);
 
 		List<Animal> candidates = level.getEntitiesOfClass(
@@ -80,5 +77,17 @@ public final class DispenserBreedingHandler {
 			&& !animal.isInLove()
 			&& animal.canFallInLove()
 			&& animal.isFood(breedingStack);
+	}
+
+	private static double rangeForward() {
+		return ConfigManager.get().rangeForward;
+	}
+
+	private static double rangeSide() {
+		return ConfigManager.get().rangeSide;
+	}
+
+	private static double rangeVertical() {
+		return ConfigManager.get().rangeVertical;
 	}
 }

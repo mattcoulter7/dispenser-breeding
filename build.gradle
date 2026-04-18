@@ -34,6 +34,7 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "org.quiltmc.parsers:json5:0.2.1"
 	
 }
 
