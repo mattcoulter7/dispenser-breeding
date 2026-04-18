@@ -123,5 +123,5 @@ jobs:
             -X PATCH \
             -H "Authorization: $MODRINTH_TOKEN" \
             -H "Content-Type: image/png" \
-            --data-binary @src/main/resources/assets/dispenserbreeding/icon.png \
+            --data-binary @src/main/resources/assets/dispenserbreeding/icon-256.png \
             "https://api.modrinth.com/v2/project/dispenser-breeding/icon?ext=png"
