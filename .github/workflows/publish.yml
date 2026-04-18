@@ -27,7 +27,7 @@ jobs:
       - name: Publish to Modrinth
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          modrinth-id: dispenser-breeding
+          modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
           files: |
