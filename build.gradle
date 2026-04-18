@@ -60,7 +60,7 @@ java {
 }
 
 jar {
-	archiveVersion = "${project.mod_version}+mc${project.minecraft_version}"
+	archiveVersion = "${project.minecraft_version}-${project.mod_version}"
 
 	inputs.property "projectName", project.name
 
