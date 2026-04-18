@@ -3,7 +3,7 @@
 	"id": "dispenserbreeding",
 	"version": "${version}",
 	"name": "Dispenser Breeding",
-	"description": "Server-side automatic animal breeding via dispensers.",
+	"description": "Server-side dispenser breeding for animals.",
 	"authors": [
 		"You"
 	],

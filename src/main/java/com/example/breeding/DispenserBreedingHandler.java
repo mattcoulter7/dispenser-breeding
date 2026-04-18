@@ -3,15 +3,14 @@ package com.example.breeding;
 import java.util.Comparator;
 import java.util.List;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.DispenserBlock;
-import net.minecraft.entity.passive.AnimalEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPointer;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.core.Direction;
+import net.minecraft.core.dispenser.BlockSource;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public final class DispenserBreedingHandler {
 	private static final double RANGE_FORWARD = 1.75D;
@@ -21,66 +20,65 @@ public final class DispenserBreedingHandler {
 	private DispenserBreedingHandler() {
 	}
 
-	public static boolean tryBreedFromDispenser(BlockPointer pointer, ItemStack stack) {
+	public static boolean tryBreedFromDispenser(BlockSource source, ItemStack stack) {
 		if (stack.isEmpty()) {
 			return false;
 		}
 
-		ServerWorld world = pointer.world();
-		BlockState state = pointer.state();
-		Direction facing = state.get(DispenserBlock.FACING);
+		ServerLevel level = source.level();
+		Direction facing = source.state().getValue(DispenserBlock.FACING);
 
-		AnimalEntity target = findBreedableAnimal(world, pointer, facing, stack);
+		Animal target = findBreedableAnimal(level, source, facing, stack);
 		if (target == null) {
 			return false;
 		}
 
-		stack.decrement(1);
-		target.lovePlayer(null);
+		stack.shrink(1);
+		target.setInLove(null);
 		return true;
 	}
 
-	private static AnimalEntity findBreedableAnimal(
-		ServerWorld world,
-		BlockPointer pointer,
+	private static Animal findBreedableAnimal(
+		ServerLevel level,
+		BlockSource source,
 		Direction facing,
 		ItemStack breedingStack
 	) {
-		Vec3d dispenseCenter = Vec3d.ofCenter(pointer.pos()).add(
-			facing.getOffsetX(),
-			facing.getOffsetY(),
-			facing.getOffsetZ()
+		Vec3 dispenseCenter = source.center().add(
+			facing.getStepX(),
+			facing.getStepY(),
+			facing.getStepZ()
 		);
 
-		Box searchBox = new Box(
+		AABB searchBox = new AABB(
 			dispenseCenter.x - RANGE_SIDE,
 			dispenseCenter.y - RANGE_VERTICAL,
 			dispenseCenter.z - RANGE_SIDE,
 			dispenseCenter.x + RANGE_SIDE,
 			dispenseCenter.y + RANGE_VERTICAL,
 			dispenseCenter.z + RANGE_SIDE
-		).stretch(
-			facing.getOffsetX() * (RANGE_FORWARD - 1.0D),
-			facing.getOffsetY() * (RANGE_FORWARD - 1.0D),
-			facing.getOffsetZ() * (RANGE_FORWARD - 1.0D)
+		).expandTowards(
+			facing.getStepX() * (RANGE_FORWARD - 1.0D),
+			facing.getStepY() * (RANGE_FORWARD - 1.0D),
+			facing.getStepZ() * (RANGE_FORWARD - 1.0D)
 		);
 
-		List<AnimalEntity> candidates = world.getEntitiesByClass(
-			AnimalEntity.class,
+		List<Animal> candidates = level.getEntitiesOfClass(
+			Animal.class,
 			searchBox,
 			animal -> isValidTarget(animal, breedingStack)
 		);
 
 		return candidates.stream()
-			.min(Comparator.comparingDouble(animal -> animal.squaredDistanceTo(dispenseCenter)))
+			.min(Comparator.comparingDouble(animal -> animal.distanceToSqr(dispenseCenter)))
 			.orElse(null);
 	}
 
-	private static boolean isValidTarget(AnimalEntity animal, ItemStack breedingStack) {
+	private static boolean isValidTarget(Animal animal, ItemStack breedingStack) {
 		return animal.isAlive()
 			&& !animal.isBaby()
 			&& !animal.isInLove()
-			&& animal.canEat()
-			&& animal.isBreedingItem(breedingStack);
+			&& animal.canFallInLove()
+			&& animal.isFood(breedingStack);
 	}
 }
