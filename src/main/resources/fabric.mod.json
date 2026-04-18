@@ -1,23 +1,23 @@
 {
 	"schemaVersion": 1,
-	"id": "examplemod",
+	"id": "dispenserbreeding",
 	"version": "${version}",
-	"name": "Example Mod",
+	"name": "Dispenser Breeding",
 	"description": "Server-side automatic animal breeding via dispensers.",
 	"authors": [
 		"You"
 	],
 	"contact": {},
 	"license": "MIT",
-	"icon": "assets/modid/icon.png",
+	"icon": "assets/dispenserbreeding/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.example.ExampleMod"
+			"com.example.DispenserBreedingMod"
 		]
 	},
 	"mixins": [
-		"examplemod.mixins.json"
+		"dispenserbreeding.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.2",

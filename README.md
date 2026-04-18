@@ -1,4 +1,4 @@
-# Example Mod
+# Dispenser Breeding
 
 ## Setup
 

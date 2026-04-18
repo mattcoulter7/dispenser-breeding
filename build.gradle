@@ -18,7 +18,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"modid" {
+		"dispenserbreeding" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
