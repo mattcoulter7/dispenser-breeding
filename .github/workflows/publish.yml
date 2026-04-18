@@ -1,0 +1,40 @@
+name: Publish to Modrinth
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Build mod
+        run: ./gradlew build
+
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: dispenser-breeding
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+
+          files: |
+            build/libs/dispenser-breeding-*.jar
+
+          name: Dispenser Breeding ${{ github.event.release.tag_name }}
+          version: ${{ github.event.release.tag_name }}
+
+          loaders: fabric
+          game-versions: 26.1.2
+
+          dependencies: |
+            fabric-api(required)
