@@ -55,7 +55,7 @@ If you're running a Fabric server via Docker, you can install it like this:
 
 ```yaml
 - name: VERSION
-  value: "26.1"
+  value: "26.1.1"
 - name: TYPE
   value: "FABRIC"
 - name: MODRINTH_PROJECTS
