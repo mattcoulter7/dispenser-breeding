@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       target_branch:
-        description: 'Target release branch (x.y.z)'
+        description: 'Target release branch (release/x.y.z)'
         required: true
       tag_name:
-        description: 'Release tag name'
+        description: 'Release tag name (<mod-version>-<loaders>)'
         required: true
       loader:
         description: 'Loader to build/publish, or all'
@@ -69,10 +69,12 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$TARGET_BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Target branch must match x.y.z" >&2
+          if [[ ! "$TARGET_BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Target branch must match release/x.y.z" >&2
             exit 1
           fi
+
+          MC_VERSION="${BASH_REMATCH[1]}"
 
           if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
             echo "Tag must match <mod-version>-<loaders>" >&2
@@ -81,7 +83,6 @@ jobs:
 
           MOD_VERSION="${BASH_REMATCH[1]}"
           LOADERS_RAW="${BASH_REMATCH[2]}"
-          MC_VERSION="$TARGET_BRANCH"
 
           declare -A SEEN
           VALID_LOADERS=()

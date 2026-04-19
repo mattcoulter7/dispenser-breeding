@@ -165,6 +165,23 @@ Supported versions:
 
 Built and published automatically via GitHub Actions.
 
+Release branches follow:
+
+`release/<minecraft-version>`
+
+Examples:
+- `release/26.1.0`
+- `release/26.1.1`
+- `release/26.1.2`
+
+Release tags follow:
+
+`<mod-version>-<loaders>`
+
+Examples:
+- `1.0.0-fabric`
+- `1.0.0-fabric+forge+neoforge+quilt`
+
 ---
 
 ## ❤️ Credits

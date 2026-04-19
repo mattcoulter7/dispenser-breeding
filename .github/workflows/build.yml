@@ -2,10 +2,13 @@ name: CI Build
 
 on:
   pull_request:
+    branches:
+      - main
+      - 'release/**'
   push:
     branches:
       - main
-      - '**.*.*'
+      - 'release/**'
   workflow_dispatch:
     inputs:
       loader:
@@ -21,34 +24,54 @@ on:
           - quilt
 
 jobs:
+  resolve-mc-version:
+    runs-on: ubuntu-latest
+    outputs:
+      mc_version: ${{ steps.resolve.outputs.mc_version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          REF_NAME="${GITHUB_REF_NAME}"
+
+          if [[ "$REF_NAME" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "mc_version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "mc_version=$REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
   build-fabric:
+    needs: resolve-mc-version
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'fabric' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: fabric
-      mc_version: ${{ github.ref_name }}
+      mc_version: ${{ needs.resolve-mc-version.outputs.mc_version }}
       mod_version: ${{ github.sha }}
 
   build-forge:
+    needs: resolve-mc-version
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'forge' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: forge
-      mc_version: ${{ github.ref_name }}
+      mc_version: ${{ needs.resolve-mc-version.outputs.mc_version }}
       mod_version: ${{ github.sha }}
 
   build-neoforge:
+    needs: resolve-mc-version
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'neoforge' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: neoforge
-      mc_version: ${{ github.ref_name }}
+      mc_version: ${{ needs.resolve-mc-version.outputs.mc_version }}
       mod_version: ${{ github.sha }}
 
   build-quilt:
+    needs: resolve-mc-version
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'quilt' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: quilt
-      mc_version: ${{ github.ref_name }}
+      mc_version: ${{ needs.resolve-mc-version.outputs.mc_version }}
       mod_version: ${{ github.sha }}
