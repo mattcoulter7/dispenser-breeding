@@ -6,9 +6,17 @@ architectury {
     common(rootProject.enabled_loaders.split(','))
 }
 
+loom {
+    silentMojangMappingsLicense()
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
 
     implementation "blue.endless:jankson:1.2.3"
+}
+
+jar {
+    archiveBaseName = "${project.archives_base_name}-common"
 }

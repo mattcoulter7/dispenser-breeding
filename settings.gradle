@@ -3,8 +3,10 @@ pluginManagement {
         maven { url = 'https://maven.fabricmc.net/' }
         maven { url = 'https://maven.architectury.dev/' }
         maven { url = 'https://maven.minecraftforge.net/' }
-        mavenCentral()
+        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url = 'https://maven.quiltmc.org/repository/release/' }
         gradlePluginPortal()
+        mavenCentral()
     }
 }
 
@@ -15,6 +17,7 @@ dependencyResolutionManagement {
         maven { url = 'https://maven.architectury.dev/' }
         maven { url = 'https://maven.minecraftforge.net/' }
         maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url = 'https://maven.quiltmc.org/repository/release/' }
         mavenCentral()
     }
 }

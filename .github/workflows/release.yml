@@ -74,19 +74,14 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
-            echo "Tag must match <mc-version>-<mod-version>-<loaders>" >&2
+          if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
+            echo "Tag must match <mod-version>-<loaders>" >&2
             exit 1
           fi
 
-          MC_VERSION="${BASH_REMATCH[1]}"
-          MOD_VERSION="${BASH_REMATCH[2]}"
-          LOADERS_RAW="${BASH_REMATCH[3]}"
-
-          if [[ "$MC_VERSION" != "$TARGET_BRANCH" ]]; then
-            echo "Tag minecraft version must equal target branch." >&2
-            exit 1
-          fi
+          MOD_VERSION="${BASH_REMATCH[1]}"
+          LOADERS_RAW="${BASH_REMATCH[2]}"
+          MC_VERSION="$TARGET_BRANCH"
 
           declare -A SEEN
           VALID_LOADERS=()

@@ -6,6 +6,10 @@ architectury {
     quilt()
 }
 
+loom {
+    silentMojangMappingsLicense()
+}
+
 configurations {
     common {
         canBeResolved = true
@@ -30,6 +34,11 @@ dependencies {
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.minecraft_version
+    inputs.property 'quilt_loader_version', project.quilt_loader_version
+    inputs.property 'mod_authors', project.mod_authors
+    inputs.property 'mod_license', project.mod_license
+
     filesMatching('quilt.mod.json') {
         expand(
             version: project.version,
