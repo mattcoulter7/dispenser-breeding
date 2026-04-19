@@ -43,6 +43,33 @@ def validate_subset(values: list[str], allowed: set[str], label: str) -> None:
         )
 
 
+def split_tag_name(tag_name: str) -> tuple[str, str, str]:
+    parts = tag_name.rsplit("-", 2)
+    if len(parts) != 3:
+        raise SystemExit(
+            "Tag must match "
+            "{minecraft version}-{mod version}-{loader1+loader2+...}. "
+            f"Got: {tag_name}"
+        )
+    return parts[0], parts[1], parts[2]
+
+
+def validate_mod_version(value: str) -> None:
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value):
+        raise SystemExit(
+            "Mod version must match x.y.z in tag parsing. "
+            f"Got: {value}"
+        )
+
+
+def validate_loader_segment(value: str) -> None:
+    if not re.fullmatch(r"[a-z0-9+]+", value):
+        raise SystemExit(
+            "Loader segment must contain only lowercase letters, digits, and '+'. "
+            f"Got: {value}"
+        )
+
+
 def gha_output(key: str, value: str) -> None:
     print(f"{key}={value}")
 
@@ -76,20 +103,10 @@ def main() -> int:
             )
         branch_minecraft_version = branch_match.group(1)
 
-        tag_match = re.fullmatch(
-            r"([0-9]+\.[0-9]+(?:\.[0-9]+)?)-([0-9]+\.[0-9]+\.[0-9]+)-([a-z0-9+]+)",
-            tag_name,
-        )
-        if not tag_match:
-            raise SystemExit(
-                "Tag must match "
-                "{minecraft version}-{mod version}-{loader1+loader2+...}. "
-                f"Got: {tag_name}"
-            )
-
-        tag_minecraft_version = tag_match.group(1)
-        tag_mod_version = tag_match.group(2)
-        loaders_csv_raw = tag_match.group(3).replace("+", ",")
+        tag_minecraft_version, tag_mod_version, tag_loaders = split_tag_name(tag_name)
+        validate_mod_version(tag_mod_version)
+        validate_loader_segment(tag_loaders)
+        loaders_csv_raw = tag_loaders.replace("+", ",")
 
         if branch_minecraft_version != tag_minecraft_version:
             raise SystemExit(
@@ -98,10 +115,10 @@ def main() -> int:
                 f"({tag_minecraft_version})."
             )
 
-        if release_name and release_name != tag_minecraft_version:
+        if release_name and release_name != tag_name:
             raise SystemExit(
-                "Release name must match the minecraft version exactly. "
-                f"Expected '{tag_minecraft_version}', got '{release_name}'."
+                "Release name must match the tag exactly. "
+                f"Expected '{tag_name}', got '{release_name}'."
             )
 
         if tag_mod_version != mod_version:
