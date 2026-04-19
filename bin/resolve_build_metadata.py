@@ -70,26 +70,36 @@ def validate_loader_segment(value: str) -> None:
         )
 
 
-def format_loader_label(loaders: list[str]) -> str:
-    return " + ".join(loader.capitalize() for loader in loaders)
+def format_loader_label(loader: str) -> str:
+    words = [part for part in loader.replace("-", "_").split("_") if part]
+    return "".join(word.capitalize() for word in words) if words else loader.capitalize()
 
 
-def build_publish_dependencies(loaders: list[str]) -> str:
-    deps: list[str] = []
+def build_loader_version_map(
+    minecraft_version: str, mod_version: str, loaders: list[str]
+) -> dict[str, str]:
+    base = f"{minecraft_version}-{mod_version}"
+    return {loader: f"{base}-{loader}" for loader in loaders}
 
-    if "fabric" in loaders:
-        deps.append("fabric-api(required)")
 
-    return "\n".join(deps)
+def build_loader_name_map(
+    minecraft_version: str, mod_version: str, loaders: list[str]
+) -> dict[str, str]:
+    base = f"{minecraft_version}-{mod_version}"
+    return {loader: f"[{format_loader_label(loader)}] {base}" for loader in loaders}
+
+
+def build_loader_dependencies_map(loaders: list[str]) -> dict[str, str]:
+    dependencies: dict[str, str] = {}
+    for loader in loaders:
+        if loader == "fabric":
+            dependencies[loader] = "fabric-api(required)"
+        else:
+            dependencies[loader] = ""
+    return dependencies
 
 
 def gha_output(key: str, value: str) -> None:
-    if "\n" in value:
-        print(f"{key}<<__GHA_OUTPUT__")
-        print(value)
-        print("__GHA_OUTPUT__")
-        return
-
     print(f"{key}={value}")
 
 
@@ -146,14 +156,10 @@ def main() -> int:
                 f"gradle.properties mod_version ({mod_version})."
             )
 
-        loaders = parse_csv(loaders_csv_raw)
-        loader_label = format_loader_label(loaders)
-
         publishers_csv_raw = default_publishers
         minecraft_version = tag_minecraft_version
         release_tag = tag_name
-        version_title = tag_name
-        version_description = f"[{loader_label}] {tag_minecraft_version}-{tag_mod_version}"
+        version_base = f"{tag_minecraft_version}-{tag_mod_version}"
         should_publish = "true"
         should_update_metadata = "false"
 
@@ -162,10 +168,7 @@ def main() -> int:
         publishers_csv_raw = os.getenv("INPUT_PUBLISHERS", "modrinth")
         minecraft_version = current_minecraft_version
         release_tag = ""
-        manual_loaders = parse_csv(loaders_csv_raw)
-        loader_label = format_loader_label(manual_loaders)
-        version_title = f"manual-{ref_name}"
-        version_description = f"[{loader_label}] {minecraft_version}-{mod_version}"
+        version_base = f"{minecraft_version}-{mod_version}"
         should_publish = os.getenv("INPUT_PUBLISH_ARTIFACTS", "true").lower()
         should_update_metadata = os.getenv("INPUT_UPDATE_METADATA", "true").lower()
 
@@ -174,8 +177,7 @@ def main() -> int:
         publishers_csv_raw = "modrinth"
         minecraft_version = current_minecraft_version
         release_tag = ""
-        version_title = ""
-        version_description = ""
+        version_base = f"{minecraft_version}-{mod_version}"
         should_publish = "false"
         should_update_metadata = (
             "true" if event_name == "push" and ref_name == "main" else "false"
@@ -186,23 +188,30 @@ def main() -> int:
 
     loaders = parse_csv(loaders_csv)
     publishers = parse_csv(publishers_csv)
-    publish_dependencies = build_publish_dependencies(loaders)
 
     validate_unique(loaders, "loaders")
     validate_unique(publishers, "publishers")
     validate_subset(loaders, allowed_loaders, "loaders")
     validate_subset(publishers, allowed_publishers, "publishers")
 
+    loader_version_map = build_loader_version_map(minecraft_version, mod_version, loaders)
+    loader_name_map = build_loader_name_map(minecraft_version, mod_version, loaders)
+    loader_dependencies_map = build_loader_dependencies_map(loaders)
+
     gha_output("minecraft_version", minecraft_version)
     gha_output("mod_version", mod_version)
+    gha_output("version_base", version_base)
     gha_output("loaders_csv", loaders_csv)
     gha_output("loaders_json", json.dumps(loaders))
     gha_output("publishers_csv", publishers_csv)
     gha_output("publishers_json", json.dumps(publishers))
     gha_output("release_tag", release_tag)
-    gha_output("version_title", version_title)
-    gha_output("version_description", version_description)
-    gha_output("publish_dependencies", publish_dependencies)
+    gha_output("loader_version_json", json.dumps(loader_version_map, separators=(",", ":")))
+    gha_output("loader_name_json", json.dumps(loader_name_map, separators=(",", ":")))
+    gha_output(
+        "loader_dependencies_json",
+        json.dumps(loader_dependencies_map, separators=(",", ":")),
+    )
     gha_output("should_publish", should_publish)
     gha_output("should_update_metadata", should_update_metadata)
 

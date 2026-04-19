@@ -40,14 +40,15 @@ jobs:
     outputs:
       minecraft_version: ${{ steps.resolve.outputs.minecraft_version }}
       mod_version: ${{ steps.resolve.outputs.mod_version }}
+      version_base: ${{ steps.resolve.outputs.version_base }}
       loaders_csv: ${{ steps.resolve.outputs.loaders_csv }}
       loaders_json: ${{ steps.resolve.outputs.loaders_json }}
       publishers_csv: ${{ steps.resolve.outputs.publishers_csv }}
       publishers_json: ${{ steps.resolve.outputs.publishers_json }}
       release_tag: ${{ steps.resolve.outputs.release_tag }}
-      version_title: ${{ steps.resolve.outputs.version_title }}
-      version_description: ${{ steps.resolve.outputs.version_description }}
-      publish_dependencies: ${{ steps.resolve.outputs.publish_dependencies }}
+      loader_version_json: ${{ steps.resolve.outputs.loader_version_json }}
+      loader_name_json: ${{ steps.resolve.outputs.loader_name_json }}
+      loader_dependencies_json: ${{ steps.resolve.outputs.loader_dependencies_json }}
       should_publish: ${{ steps.resolve.outputs.should_publish }}
       should_update_metadata: ${{ steps.resolve.outputs.should_update_metadata }}
 
@@ -114,12 +115,41 @@ jobs:
       fail-fast: false
       matrix:
         publisher: ${{ fromJson(needs.resolve.outputs.publishers_json) }}
+        loader: ${{ fromJson(needs.resolve.outputs.loaders_json) }}
 
     steps:
-      - name: Download all loader artifacts
+      - name: Download loader artifact
         uses: actions/download-artifact@v5
         with:
-          path: artifacts
+          name: build-${{ matrix.loader }}
+          path: artifacts/${{ matrix.loader }}
+
+      - name: Compute publish metadata
+        id: publish_meta
+        shell: bash
+        env:
+          MATRIX_LOADER: ${{ matrix.loader }}
+          LOADER_VERSION_JSON: ${{ needs.resolve.outputs.loader_version_json }}
+          LOADER_NAME_JSON: ${{ needs.resolve.outputs.loader_name_json }}
+          LOADER_DEPENDENCIES_JSON: ${{ needs.resolve.outputs.loader_dependencies_json }}
+        run: |
+          set -euo pipefail
+
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          loader = os.environ["MATRIX_LOADER"]
+          version_map = json.loads(os.environ["LOADER_VERSION_JSON"])
+          name_map = json.loads(os.environ["LOADER_NAME_JSON"])
+          dependencies_map = json.loads(os.environ["LOADER_DEPENDENCIES_JSON"])
+
+          print(f"version_name={version_map[loader]}")
+          print(f"display_name={name_map[loader]}")
+          print("dependencies<<__EOF__")
+          print(dependencies_map.get(loader, ""))
+          print("__EOF__")
+          PY
 
       - name: Publish to Modrinth
         if: matrix.publisher == 'modrinth'
@@ -128,14 +158,14 @@ jobs:
           modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
-            artifacts/**/*.jar
-          version: ${{ needs.resolve.outputs.version_title }}
-          name: ${{ needs.resolve.outputs.version_description }}
+            artifacts/${{ matrix.loader }}/*.jar
+          version: ${{ steps.publish_meta.outputs.version_name }}
+          name: ${{ steps.publish_meta.outputs.display_name }}
           version-type: release
-          changelog: ${{ github.event_name == 'release' && github.event.release.body || needs.resolve.outputs.version_description }}
-          loaders: ${{ needs.resolve.outputs.loaders_csv }}
+          changelog: ${{ github.event_name == 'release' && github.event.release.body || '' }}
+          loaders: ${{ matrix.loader }}
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
-          dependencies: ${{ needs.resolve.outputs.publish_dependencies }}
+          dependencies: ${{ steps.publish_meta.outputs.dependencies }}
 
       - name: Placeholder for SourceForge publishing
         if: matrix.publisher == 'sourceforge'
