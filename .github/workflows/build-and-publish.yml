@@ -40,13 +40,15 @@ jobs:
     outputs:
       minecraft_version: ${{ steps.resolve.outputs.minecraft_version }}
       mod_version: ${{ steps.resolve.outputs.mod_version }}
+      version_base: ${{ steps.resolve.outputs.version_base }}
       loaders_csv: ${{ steps.resolve.outputs.loaders_csv }}
       loaders_json: ${{ steps.resolve.outputs.loaders_json }}
       publishers_csv: ${{ steps.resolve.outputs.publishers_csv }}
       publishers_json: ${{ steps.resolve.outputs.publishers_json }}
       release_tag: ${{ steps.resolve.outputs.release_tag }}
-      version_title: ${{ steps.resolve.outputs.version_title }}
-      version_description: ${{ steps.resolve.outputs.version_description }}
+      loader_version_json: ${{ steps.resolve.outputs.loader_version_json }}
+      loader_name_json: ${{ steps.resolve.outputs.loader_name_json }}
+      loader_dependencies_json: ${{ steps.resolve.outputs.loader_dependencies_json }}
       should_publish: ${{ steps.resolve.outputs.should_publish }}
       should_update_metadata: ${{ steps.resolve.outputs.should_update_metadata }}
 
@@ -125,32 +127,45 @@ jobs:
       - name: Compute publish metadata
         id: publish_meta
         shell: bash
+        env:
+          MATRIX_LOADER: ${{ matrix.loader }}
+          LOADER_VERSION_JSON: ${{ needs.resolve.outputs.loader_version_json }}
+          LOADER_NAME_JSON: ${{ needs.resolve.outputs.loader_name_json }}
+          LOADER_DEPENDENCIES_JSON: ${{ needs.resolve.outputs.loader_dependencies_json }}
         run: |
           set -euo pipefail
-          if [[ -n "${{ needs.resolve.outputs.version_title }}" ]]; then
-            base_name="${{ needs.resolve.outputs.version_title }}"
-          else
-            base_name="${{ needs.resolve.outputs.minecraft_version }}-${{ needs.resolve.outputs.mod_version }}"
-          fi
-          version_name="${base_name}-${{ matrix.loader }}"
-          display_name="${version_name}"
-          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
-          echo "display_name=${display_name}" >> "$GITHUB_OUTPUT"
+
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          loader = os.environ["MATRIX_LOADER"]
+          version_map = json.loads(os.environ["LOADER_VERSION_JSON"])
+          name_map = json.loads(os.environ["LOADER_NAME_JSON"])
+          dependencies_map = json.loads(os.environ["LOADER_DEPENDENCIES_JSON"])
+
+          print(f"version_name={version_map[loader]}")
+          print(f"display_name={name_map[loader]}")
+          print("dependencies<<__EOF__")
+          print(dependencies_map.get(loader, ""))
+          print("__EOF__")
+          PY
 
       - name: Publish to Modrinth
         if: matrix.publisher == 'modrinth'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          modrinth-id: dispenser-breeding
+          modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
             artifacts/${{ matrix.loader }}/*.jar
-          name: ${{ steps.publish_meta.outputs.display_name }}
           version: ${{ steps.publish_meta.outputs.version_name }}
+          name: ${{ steps.publish_meta.outputs.display_name }}
           version-type: release
-          changelog: ${{ needs.resolve.outputs.version_description }}
+          changelog: ${{ github.event_name == 'release' && github.event.release.body || '' }}
           loaders: ${{ matrix.loader }}
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
+          dependencies: ${{ steps.publish_meta.outputs.dependencies }}
 
       - name: Placeholder for SourceForge publishing
         if: matrix.publisher == 'sourceforge'
@@ -188,5 +203,5 @@ jobs:
             -X PATCH \
             -H "Authorization: $MODRINTH_TOKEN" \
             -H "Content-Type: image/png" \
-            --data-binary @fabric/src/main/resources/assets/dispenserbreeding/icon-256.png \
+            --data-binary @common/src/main/resources/assets/dispenserbreeding/icon-256.png \
             "https://api.modrinth.com/v2/project/dispenser-breeding/icon?ext=png"

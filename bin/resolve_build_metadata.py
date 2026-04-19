@@ -43,6 +43,62 @@ def validate_subset(values: list[str], allowed: set[str], label: str) -> None:
         )
 
 
+def split_tag_name(tag_name: str) -> tuple[str, str, str]:
+    parts = tag_name.rsplit("-", 2)
+    if len(parts) != 3:
+        raise SystemExit(
+            "Tag must match "
+            "{minecraft version}-{mod version}-{loader1+loader2+...}. "
+            f"Got: {tag_name}"
+        )
+    return parts[0], parts[1], parts[2]
+
+
+def validate_mod_version(value: str) -> None:
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value):
+        raise SystemExit(
+            "Mod version must match x.y.z in tag parsing. "
+            f"Got: {value}"
+        )
+
+
+def validate_loader_segment(value: str) -> None:
+    if not re.fullmatch(r"[a-z0-9+]+", value):
+        raise SystemExit(
+            "Loader segment must contain only lowercase letters, digits, and '+'. "
+            f"Got: {value}"
+        )
+
+
+def format_loader_label(loader: str) -> str:
+    words = [part for part in loader.replace("-", "_").split("_") if part]
+    return "".join(word.capitalize() for word in words) if words else loader.capitalize()
+
+
+def build_loader_version_map(
+    minecraft_version: str, mod_version: str, loaders: list[str]
+) -> dict[str, str]:
+    base = f"{minecraft_version}-{mod_version}"
+    return {loader: f"{base}-{loader}" for loader in loaders}
+
+
+def build_loader_name_map(
+    minecraft_version: str, mod_version: str, loaders: list[str]
+) -> dict[str, str]:
+    base = f"{minecraft_version}-{mod_version}"
+    return {loader: f"[{format_loader_label(loader)}] {base}" for loader in loaders}
+
+
+def build_loader_dependencies_map(loaders: list[str]) -> dict[str, str]:
+    dependencies: dict[str, str] = {}
+    for loader in loaders:
+        if loader == "fabric":
+            dependencies[loader] = "fabric-api(required)"
+        else:
+            dependencies[loader] = ""
+    return dependencies
+
+
 def gha_output(key: str, value: str) -> None:
     print(f"{key}={value}")
 
@@ -76,20 +132,10 @@ def main() -> int:
             )
         branch_minecraft_version = branch_match.group(1)
 
-        tag_match = re.fullmatch(
-            r"([0-9]+\.[0-9]+(?:\.[0-9]+)?)-([0-9]+\.[0-9]+\.[0-9]+)-([a-z0-9+]+)",
-            tag_name,
-        )
-        if not tag_match:
-            raise SystemExit(
-                "Tag must match "
-                "{minecraft version}-{mod version}-{loader1+loader2+...}. "
-                f"Got: {tag_name}"
-            )
-
-        tag_minecraft_version = tag_match.group(1)
-        tag_mod_version = tag_match.group(2)
-        loaders_csv_raw = tag_match.group(3).replace("+", ",")
+        tag_minecraft_version, tag_mod_version, tag_loaders = split_tag_name(tag_name)
+        validate_mod_version(tag_mod_version)
+        validate_loader_segment(tag_loaders)
+        loaders_csv_raw = tag_loaders.replace("+", ",")
 
         if branch_minecraft_version != tag_minecraft_version:
             raise SystemExit(
@@ -98,10 +144,10 @@ def main() -> int:
                 f"({tag_minecraft_version})."
             )
 
-        if release_name and release_name != tag_minecraft_version:
+        if release_name and release_name != tag_name:
             raise SystemExit(
-                "Release name must match the minecraft version exactly. "
-                f"Expected '{tag_minecraft_version}', got '{release_name}'."
+                "Release name must match the tag exactly. "
+                f"Expected '{tag_name}', got '{release_name}'."
             )
 
         if tag_mod_version != mod_version:
@@ -113,12 +159,7 @@ def main() -> int:
         publishers_csv_raw = default_publishers
         minecraft_version = tag_minecraft_version
         release_tag = tag_name
-        version_title = tag_name
-        version_description = (
-            f"minecraft={tag_minecraft_version}; "
-            f"mod={tag_mod_version}; "
-            f"loaders={loaders_csv_raw}"
-        )
+        version_base = f"{tag_minecraft_version}-{tag_mod_version}"
         should_publish = "true"
         should_update_metadata = "false"
 
@@ -127,10 +168,7 @@ def main() -> int:
         publishers_csv_raw = os.getenv("INPUT_PUBLISHERS", "modrinth")
         minecraft_version = current_minecraft_version
         release_tag = ""
-        version_title = f"manual-{ref_name}"
-        version_description = (
-            f"manual build for {minecraft_version}; loaders={loaders_csv_raw}"
-        )
+        version_base = f"{minecraft_version}-{mod_version}"
         should_publish = os.getenv("INPUT_PUBLISH_ARTIFACTS", "true").lower()
         should_update_metadata = os.getenv("INPUT_UPDATE_METADATA", "true").lower()
 
@@ -139,8 +177,7 @@ def main() -> int:
         publishers_csv_raw = "modrinth"
         minecraft_version = current_minecraft_version
         release_tag = ""
-        version_title = ""
-        version_description = ""
+        version_base = f"{minecraft_version}-{mod_version}"
         should_publish = "false"
         should_update_metadata = (
             "true" if event_name == "push" and ref_name == "main" else "false"
@@ -157,15 +194,24 @@ def main() -> int:
     validate_subset(loaders, allowed_loaders, "loaders")
     validate_subset(publishers, allowed_publishers, "publishers")
 
+    loader_version_map = build_loader_version_map(minecraft_version, mod_version, loaders)
+    loader_name_map = build_loader_name_map(minecraft_version, mod_version, loaders)
+    loader_dependencies_map = build_loader_dependencies_map(loaders)
+
     gha_output("minecraft_version", minecraft_version)
     gha_output("mod_version", mod_version)
+    gha_output("version_base", version_base)
     gha_output("loaders_csv", loaders_csv)
     gha_output("loaders_json", json.dumps(loaders))
     gha_output("publishers_csv", publishers_csv)
     gha_output("publishers_json", json.dumps(publishers))
     gha_output("release_tag", release_tag)
-    gha_output("version_title", version_title)
-    gha_output("version_description", version_description)
+    gha_output("loader_version_json", json.dumps(loader_version_map, separators=(",", ":")))
+    gha_output("loader_name_json", json.dumps(loader_name_map, separators=(",", ":")))
+    gha_output(
+        "loader_dependencies_json",
+        json.dumps(loader_dependencies_map, separators=(",", ":")),
+    )
     gha_output("should_publish", should_publish)
     gha_output("should_update_metadata", should_update_metadata)
 
