@@ -59,142 +59,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          mod_version="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
-          default_publishers="$(grep '^default_publishers=' gradle.properties | cut -d= -f2)"
-          current_minecraft_version="$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)"
-
-          to_json_array() {
-            python - "$1" <<'PY'
-import json, sys
-items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
-print(json.dumps(items))
-PY
-          }
-
-          normalize_csv() {
-            python - "$1" <<'PY'
-import sys
-items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
-print(",".join(items))
-PY
-          }
-
-          validate_loaders() {
-            local csv="$1"
-            python - "$csv" <<'PY'
-import sys
-allowed = {"fabric"}
-items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
-invalid = [x for x in items if x not in allowed]
-if invalid:
-    raise SystemExit(f"Unsupported loaders: {invalid}. Supported now: ['fabric']")
-PY
-          }
-
-          validate_publishers() {
-            local csv="$1"
-            python - "$csv" <<'PY'
-import sys
-allowed = {"modrinth", "sourceforge"}
-items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
-invalid = [x for x in items if x not in allowed]
-if invalid:
-    raise SystemExit(f"Unsupported publishers: {invalid}. Supported now: ['modrinth', 'sourceforge']")
-PY
-          }
-
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            target_branch="${{ github.event.release.target_commitish }}"
-            tag_name="${{ github.event.release.tag_name }}"
-            release_name="${{ github.event.release.name }}"
-
-            if [[ "${target_branch}" == "main" ]]; then
-              echo "Releases targeting main are not allowed."
-              exit 1
-            fi
-
-            if [[ ! "${target_branch}" =~ ^release/(.+)$ ]]; then
-              echo "Release target branch must match release/{minecraft version}. Got: ${target_branch}"
-              exit 1
-            fi
-
-            branch_minecraft_version="${BASH_REMATCH[1]}"
-
-            if [[ ! "${tag_name}" =~ ^([0-9]+\.[0-9]+(\.[0-9]+)?)-([0-9]+\.[0-9]+\.[0-9]+)-([a-z0-9+]+)$ ]]; then
-              echo "Tag must match {minecraft version}-{mod version}-{loader1+loader2+...}. Got: ${tag_name}"
-              exit 1
-            fi
-
-            tag_minecraft_version="${BASH_REMATCH[1]}"
-            tag_mod_version="${BASH_REMATCH[3]}"
-            loaders_csv_raw="${BASH_REMATCH[4]//+/,}"
-
-            if [[ "${branch_minecraft_version}" != "${tag_minecraft_version}" ]]; then
-              echo "Release target branch minecraft version (${branch_minecraft_version}) does not match tag minecraft version (${tag_minecraft_version})."
-              exit 1
-            fi
-
-            if [[ -n "${release_name}" && "${release_name}" != "${tag_minecraft_version}" ]]; then
-              echo "Release name must match the minecraft version exactly. Expected '${tag_minecraft_version}', got '${release_name}'."
-              exit 1
-            fi
-
-            if [[ "${tag_mod_version}" != "${mod_version}" ]]; then
-              echo "Tag mod version (${tag_mod_version}) does not match gradle.properties mod_version (${mod_version})."
-              exit 1
-            fi
-
-            publishers_csv_raw="${default_publishers}"
-            minecraft_version="${tag_minecraft_version}"
-            release_tag="${tag_name}"
-            version_title="${tag_name}"
-            version_description="minecraft=${tag_minecraft_version}; mod=${tag_mod_version}; loaders=${loaders_csv_raw}"
-            should_publish="true"
-            should_update_metadata="false"
-
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            loaders_csv_raw="${{ inputs.loaders }}"
-            publishers_csv_raw="${{ inputs.publishers }}"
-            minecraft_version="${current_minecraft_version}"
-            release_tag=""
-            version_title="manual-${GITHUB_REF_NAME}"
-            version_description="manual build for ${minecraft_version}; loaders=${loaders_csv_raw}"
-            should_publish="${{ inputs.publish_artifacts }}"
-            should_update_metadata="${{ inputs.update_metadata }}"
-
-          else
-            loaders_csv_raw="fabric"
-            publishers_csv_raw="modrinth"
-            minecraft_version="${current_minecraft_version}"
-            release_tag=""
-            version_title=""
-            version_description=""
-            should_publish="false"
-            if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" ]]; then
-              should_update_metadata="true"
-            else
-              should_update_metadata="false"
-            fi
-          fi
-
-          loaders_csv="$(normalize_csv "${loaders_csv_raw}")"
-          publishers_csv="$(normalize_csv "${publishers_csv_raw}")"
-
-          validate_loaders "${loaders_csv}"
-          validate_publishers "${publishers_csv}"
-
-          echo "minecraft_version=${minecraft_version}" >> "$GITHUB_OUTPUT"
-          echo "mod_version=${mod_version}" >> "$GITHUB_OUTPUT"
-          echo "loaders_csv=${loaders_csv}" >> "$GITHUB_OUTPUT"
-          echo "loaders_json=$(to_json_array "${loaders_csv}")" >> "$GITHUB_OUTPUT"
-          echo "publishers_csv=${publishers_csv}" >> "$GITHUB_OUTPUT"
-          echo "publishers_json=$(to_json_array "${publishers_csv}")" >> "$GITHUB_OUTPUT"
-          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
-          echo "version_title=${version_title}" >> "$GITHUB_OUTPUT"
-          echo "version_description=${version_description}" >> "$GITHUB_OUTPUT"
-          echo "should_publish=${should_publish}" >> "$GITHUB_OUTPUT"
-          echo "should_update_metadata=${should_update_metadata}" >> "$GITHUB_OUTPUT"
+          python bin/resolve_build_metadata.py >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          RELEASE_TARGET_COMMITISH: ${{ github.event.release.target_commitish }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          INPUT_LOADERS: ${{ inputs.loaders }}
+          INPUT_PUBLISHERS: ${{ inputs.publishers }}
+          INPUT_PUBLISH_ARTIFACTS: ${{ inputs.publish_artifacts }}
+          INPUT_UPDATE_METADATA: ${{ inputs.update_metadata }}
 
   build:
     runs-on: ubuntu-24.04
@@ -296,13 +171,7 @@ PY
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: |
-          python - <<'PY' > body.json
-          import json
-          from pathlib import Path
-
-          readme = Path("README.md").read_text(encoding="utf-8")
-          print(json.dumps({"body": readme}))
-          PY
+          python bin/build_modrinth_body.py > body.json
 
           curl --fail-with-body \
             -X PATCH \
