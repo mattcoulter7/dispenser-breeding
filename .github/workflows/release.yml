@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Target release branch (x.y.z)'
+        required: true
+      tag_name:
+        description: 'Release tag name'
+        required: true
+      vendor:
+        description: 'Loader or all'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - fabric
+          - forge
+          - neoforge
+          - quilt
+
+jobs:
+  validate-and-parse:
+    runs-on: ubuntu-latest
+    outputs:
+      parsed: ${{ steps.parse.outputs.parsed || '' }}
+    steps:
+      - name: Parse tag
+        id: parse
+        run: |
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
+          TARGET_BRANCH="${{ github.event.inputs.target_branch }}"
+          echo "{\"mc_version\": \"${TAG%%-*}\", \"tag\": \"$TAG\"}" > parsed.json
+          echo "parsed=$(cat parsed.json)" >> $GITHUB_OUTPUT
+
+  build-and-publish:
+    needs: validate-and-parse
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug parsed
+        run: echo "Parsed: ${{ needs.validate-and-parse.outputs.parsed }}"

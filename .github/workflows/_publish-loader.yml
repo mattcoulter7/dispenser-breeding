@@ -1,0 +1,23 @@
+name: Publish Loader (reusable)
+on:
+  workflow_call:
+    inputs:
+      loader:
+        required: true
+        type: string
+      mc_version:
+        required: true
+        type: string
+      mod_version:
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Publish artifact
+        run: |
+          echo "Publishing ${{ inputs.loader }} artifact for ${{ inputs.mc_version }} - ${{ inputs.mod_version }}"

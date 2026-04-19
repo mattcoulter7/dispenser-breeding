@@ -1,0 +1,18 @@
+plugins {
+    id 'dev.architectury.loom'
+}
+
+architectury {
+    common(rootProject.enabled_loaders.split(','))
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+
+    implementation "blue.endless:jankson:1.2.3"
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/dispenserbreeding.accesswidener")
+}

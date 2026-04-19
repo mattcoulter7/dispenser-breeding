@@ -1,0 +1,44 @@
+name: Metadata
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      vendor:
+        description: 'Choose loader or all'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - fabric
+          - forge
+          - neoforge
+          - quilt
+
+jobs:
+  metadata-fabric:
+    if: "contains(github.event.inputs.vendor, 'fabric') || github.event.inputs.vendor == 'all'"
+    uses: ./.github/workflows/_metadata-loader.yml
+    with:
+      loader: fabric
+
+  metadata-forge:
+    if: "contains(github.event.inputs.vendor, 'forge') || github.event.inputs.vendor == 'all'"
+    uses: ./.github/workflows/_metadata-loader.yml
+    with:
+      loader: forge
+
+  metadata-neoforge:
+    if: "contains(github.event.inputs.vendor, 'neoforge') || github.event.inputs.vendor == 'all'"
+    uses: ./.github/workflows/_metadata-loader.yml
+    with:
+      loader: neoforge
+
+  metadata-quilt:
+    if: "contains(github.event.inputs.vendor, 'quilt') || github.event.inputs.vendor == 'all'"
+    uses: ./.github/workflows/_metadata-loader.yml
+    with:
+      loader: quilt

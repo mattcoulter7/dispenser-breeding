@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "quilt_loader": {
+    "group": "com.dispenserbreeding",
+    "id": "dispenserbreeding",
+    "version": "${version}",
+    "metadata": {
+      "name": "Dispenser Breeding",
+      "description": "Server-side dispenser breeding for animals.",
+      "contributors": {
+        "${mod_authors}": "Owner"
+      },
+      "license": "${mod_license}",
+      "icon": "assets/dispenserbreeding/icon-128.png"
+    },
+    "entrypoints": {
+      "init": ["com.dispenserbreeding.quilt.DispenserBreedingQuilt"]
+    },
+    "depends": [
+      {
+        "id": "quilt_loader",
+        "versions": ">=${quilt_loader_version}"
+      },
+      {
+        "id": "minecraft",
+        "versions": "~${minecraft_version}"
+      }
+    ]
+  },
+  "mixin": ["dispenserbreeding-common.mixins.json"]
+}

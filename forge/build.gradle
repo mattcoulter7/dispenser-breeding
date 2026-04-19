@@ -1,0 +1,51 @@
+plugins {
+    id 'dev.architectury.loom'
+}
+
+architectury {
+    forge()
+}
+
+configurations {
+    common {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    shadowCommon {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    forge "net.minecraftforge:forge:${project.forge_version}"
+
+    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
+    shadowCommon(project(path: ':common', configuration: 'transformProductionForge')) { transitive false }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand(
+            mod_id: project.mod_id,
+            mod_name: project.mod_name,
+            version: project.version,
+            minecraft_version_range: project.minecraft_version_range,
+            forge_loader_version_range: project.forge_loader_version_range,
+            mod_description: project.mod_description,
+            mod_authors: project.mod_authors,
+            mod_license: project.mod_license,
+            issue_tracker_url: project.issue_tracker_url,
+            homepage_url: project.homepage_url
+        )
+    }
+}
+
+jar {
+    archiveBaseName = "${project.archives_base_name}-forge"
+}
