@@ -1,13 +1,15 @@
 pluginManagement {
 	repositories {
 		maven {
-			name = 'Fabric'
-			url = 'https://maven.fabricmc.net/'
+			name = "Fabric"
+			url = "https://maven.fabricmc.net/"
 		}
 		mavenCentral()
 		gradlePluginPortal()
 	}
 }
 
-// Should match your project name
-rootProject.name = 'dispenserbreeding'
+rootProject.name = "dispenserbreeding"
+
+include("common")
+include("fabric")

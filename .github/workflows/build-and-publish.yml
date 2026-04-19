@@ -5,18 +5,28 @@ on:
   push:
     branches:
       - main
-      - '*.*.*'
+      - release/**
   release:
     types: [published]
   workflow_dispatch:
     inputs:
+      loaders:
+        description: "Comma-separated loaders (e.g. fabric)"
+        type: string
+        required: false
+        default: "fabric"
+      publishers:
+        description: "Comma-separated publishers (e.g. modrinth,sourceforge)"
+        type: string
+        required: false
+        default: "modrinth"
       publish_artifacts:
-        description: "Build and publish to Modrinth / GitHub Release"
+        description: "Build and publish release artifacts"
         type: boolean
         required: true
         default: true
       update_metadata:
-        description: "Update Modrinth README and icon"
+        description: "Update publisher metadata"
         type: boolean
         required: true
         default: true
@@ -25,9 +35,174 @@ permissions:
   contents: write
 
 jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      minecraft_version: ${{ steps.resolve.outputs.minecraft_version }}
+      mod_version: ${{ steps.resolve.outputs.mod_version }}
+      loaders_csv: ${{ steps.resolve.outputs.loaders_csv }}
+      loaders_json: ${{ steps.resolve.outputs.loaders_json }}
+      publishers_csv: ${{ steps.resolve.outputs.publishers_csv }}
+      publishers_json: ${{ steps.resolve.outputs.publishers_json }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      version_title: ${{ steps.resolve.outputs.version_title }}
+      version_description: ${{ steps.resolve.outputs.version_description }}
+      should_publish: ${{ steps.resolve.outputs.should_publish }}
+      should_update_metadata: ${{ steps.resolve.outputs.should_update_metadata }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve build metadata
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mod_version="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          default_publishers="$(grep '^default_publishers=' gradle.properties | cut -d= -f2)"
+          current_minecraft_version="$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)"
+
+          to_json_array() {
+            python - "$1" <<'PY'
+import json, sys
+items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
+print(json.dumps(items))
+PY
+          }
+
+          normalize_csv() {
+            python - "$1" <<'PY'
+import sys
+items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
+print(",".join(items))
+PY
+          }
+
+          validate_loaders() {
+            local csv="$1"
+            python - "$csv" <<'PY'
+import sys
+allowed = {"fabric"}
+items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
+invalid = [x for x in items if x not in allowed]
+if invalid:
+    raise SystemExit(f"Unsupported loaders: {invalid}. Supported now: ['fabric']")
+PY
+          }
+
+          validate_publishers() {
+            local csv="$1"
+            python - "$csv" <<'PY'
+import sys
+allowed = {"modrinth", "sourceforge"}
+items = [x.strip() for x in sys.argv[1].split(",") if x.strip()]
+invalid = [x for x in items if x not in allowed]
+if invalid:
+    raise SystemExit(f"Unsupported publishers: {invalid}. Supported now: ['modrinth', 'sourceforge']")
+PY
+          }
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            target_branch="${{ github.event.release.target_commitish }}"
+            tag_name="${{ github.event.release.tag_name }}"
+            release_name="${{ github.event.release.name }}"
+
+            if [[ "${target_branch}" == "main" ]]; then
+              echo "Releases targeting main are not allowed."
+              exit 1
+            fi
+
+            if [[ ! "${target_branch}" =~ ^release/(.+)$ ]]; then
+              echo "Release target branch must match release/{minecraft version}. Got: ${target_branch}"
+              exit 1
+            fi
+
+            branch_minecraft_version="${BASH_REMATCH[1]}"
+
+            if [[ ! "${tag_name}" =~ ^([0-9]+\.[0-9]+(\.[0-9]+)?)-([0-9]+\.[0-9]+\.[0-9]+)-([a-z0-9+]+)$ ]]; then
+              echo "Tag must match {minecraft version}-{mod version}-{loader1+loader2+...}. Got: ${tag_name}"
+              exit 1
+            fi
+
+            tag_minecraft_version="${BASH_REMATCH[1]}"
+            tag_mod_version="${BASH_REMATCH[3]}"
+            loaders_csv_raw="${BASH_REMATCH[4]//+/,}"
+
+            if [[ "${branch_minecraft_version}" != "${tag_minecraft_version}" ]]; then
+              echo "Release target branch minecraft version (${branch_minecraft_version}) does not match tag minecraft version (${tag_minecraft_version})."
+              exit 1
+            fi
+
+            if [[ -n "${release_name}" && "${release_name}" != "${tag_minecraft_version}" ]]; then
+              echo "Release name must match the minecraft version exactly. Expected '${tag_minecraft_version}', got '${release_name}'."
+              exit 1
+            fi
+
+            if [[ "${tag_mod_version}" != "${mod_version}" ]]; then
+              echo "Tag mod version (${tag_mod_version}) does not match gradle.properties mod_version (${mod_version})."
+              exit 1
+            fi
+
+            publishers_csv_raw="${default_publishers},sourceforge"
+            minecraft_version="${tag_minecraft_version}"
+            release_tag="${tag_name}"
+            version_title="${tag_name}"
+            version_description="minecraft=${tag_minecraft_version}; mod=${tag_mod_version}; loaders=${loaders_csv_raw}"
+            should_publish="true"
+            should_update_metadata="false"
+
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            loaders_csv_raw="${{ inputs.loaders }}"
+            publishers_csv_raw="${{ inputs.publishers }}"
+            minecraft_version="${current_minecraft_version}"
+            release_tag=""
+            version_title="manual-${GITHUB_REF_NAME}"
+            version_description="manual build for ${minecraft_version}; loaders=${loaders_csv_raw}"
+            should_publish="${{ inputs.publish_artifacts }}"
+            should_update_metadata="${{ inputs.update_metadata }}"
+
+          else
+            loaders_csv_raw="fabric"
+            publishers_csv_raw="modrinth"
+            minecraft_version="${current_minecraft_version}"
+            release_tag=""
+            version_title=""
+            version_description=""
+            should_publish="false"
+            if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" ]]; then
+              should_update_metadata="true"
+            else
+              should_update_metadata="false"
+            fi
+          fi
+
+          loaders_csv="$(normalize_csv "${loaders_csv_raw}")"
+          publishers_csv="$(normalize_csv "${publishers_csv_raw}")"
+
+          validate_loaders "${loaders_csv}"
+          validate_publishers "${publishers_csv}"
+
+          echo "minecraft_version=${minecraft_version}" >> "$GITHUB_OUTPUT"
+          echo "mod_version=${mod_version}" >> "$GITHUB_OUTPUT"
+          echo "loaders_csv=${loaders_csv}" >> "$GITHUB_OUTPUT"
+          echo "loaders_json=$(to_json_array "${loaders_csv}")" >> "$GITHUB_OUTPUT"
+          echo "publishers_csv=${publishers_csv}" >> "$GITHUB_OUTPUT"
+          echo "publishers_json=$(to_json_array "${publishers_csv}")" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "version_title=${version_title}" >> "$GITHUB_OUTPUT"
+          echo "version_description=${version_description}" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${should_publish}" >> "$GITHUB_OUTPUT"
+          echo "should_update_metadata=${should_update_metadata}" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch' || inputs.publish_artifacts || inputs.update_metadata
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: ${{ fromJson(needs.resolve.outputs.loaders_json) }}
 
     steps:
       - name: Checkout repository
@@ -51,47 +226,38 @@ jobs:
       - name: Capture build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-libs
-          path: build/libs/dispenserbreeding-*.jar
+      - name: Build selected loader
+        run: ./gradlew :${{ matrix.loader }}:build -Penabled_loaders=${{ matrix.loader }}
           if-no-files-found: error
-
+      - name: Capture loader artifact
   publish:
     runs-on: ubuntu-24.04
-    needs: build
-    if: |
+          name: build-${{ matrix.loader }}
+          path: ${{ matrix.loader }}/build/libs/*.jar
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && inputs.publish_artifacts)
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Download build artifacts
+    needs: [resolve, build]
+    if: needs.resolve.outputs.should_publish == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        publisher: ${{ fromJson(needs.resolve.outputs.publishers_json) }}
+        loader: ${{ fromJson(needs.resolve.outputs.loaders_json) }}
         uses: actions/download-artifact@v4
         with:
           name: build-libs
           path: build/libs
 
-      - name: Compute publish metadata
+      - name: Download loader artifact
         id: publish_meta
         shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            echo "display_name=[Fabric] ${{ github.event.release.target_commitish }}-${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
-            echo "version_name=${{ github.event.release.target_commitish }}-${{ github.event.release.tag_name }}-fabric" >> "$GITHUB_OUTPUT"
-          else
-            SHORT_SHA="$(git rev-parse --short HEAD)"
-            echo "display_name=[Fabric] manual-${GITHUB_REF_NAME}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-            echo "version_name=manual-${GITHUB_REF_NAME}-${SHORT_SHA}-fabric" >> "$GITHUB_OUTPUT"
-          fi
+          name: build-${{ matrix.loader }}
+          path: artifacts/${{ matrix.loader }}
 
-      - name: Publish to Modrinth and attach jar to GitHub Release
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: zlKk8V6R
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Publish to Modrinth
+        if: matrix.publisher == 'modrinth'
           files: |
             build/libs/dispenserbreeding-*.jar
 
@@ -99,23 +265,30 @@ jobs:
           version: ${{ steps.publish_meta.outputs.version_name }}
 
           loaders: fabric
-          game-versions: 26.1.2
+            artifacts/${{ matrix.loader }}/*.jar
 
-          dependencies: |
-            fabric-api(required)
+          name: ${{ needs.resolve.outputs.version_title }}
+          version: ${{ needs.resolve.outputs.version_title }}
+          version-type: release
+          changelog: ${{ needs.resolve.outputs.version_description }}
 
-  update-modrinth-metadata:
-    runs-on: ubuntu-24.04
+          loaders: ${{ matrix.loader }}
+          game-versions: ${{ needs.resolve.outputs.minecraft_version }}
     needs: build
     if: |
       (github.event_name == 'push' && github.ref_name == 'main') ||
+
+      - name: Placeholder for SourceForge publishing
+        if: matrix.publisher == 'sourceforge'
+        shell: bash
+        run: |
+          echo "SourceForge publishing not implemented yet."
+          echo "Publisher abstraction is in place and this branch of the matrix is reserved."
       (github.event_name == 'workflow_dispatch' && inputs.update_metadata)
-
+  update-metadata:
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Update Modrinth project body from README.md
+    needs: [resolve, build]
+    if: needs.resolve.outputs.should_update_metadata == 'true'
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: |
@@ -142,5 +315,5 @@ jobs:
             -X PATCH \
             -H "Authorization: $MODRINTH_TOKEN" \
             -H "Content-Type: image/png" \
-            --data-binary @src/main/resources/assets/dispenserbreeding/icon-256.png \
+            --data-binary @fabric/src/main/resources/assets/dispenserbreeding/icon-256.png \
             "https://api.modrinth.com/v2/project/dispenser-breeding/icon?ext=png"

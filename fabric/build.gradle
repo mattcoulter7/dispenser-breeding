@@ -1,0 +1,210 @@
+plugins {
+	id "net.fabricmc.fabric-loom" version "${loom_version}"
+	id "maven-publish"
+}
+
+version = rootProject.version
+group = rootProject.group
+
+base {
+	archivesName = project.mod_id
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	compileOnly project(path: ":common", configuration: "namedElements")
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"${project.mod_id}" {
+			sourceSet sourceSets.main
+			sourceSet project(":common").sourceSets.main
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java.srcDir project(":common").file("src/main/java")
+		resources.srcDir project(":common").file("src/main/resources")
+	}
+}
+
+processResources {
+	inputs.property "version", project.version
+	inputs.property "minecraft_version", project.minecraft_version
+	inputs.property "fabric_loader_version", project.fabric_loader_version
+
+	filesMatching("fabric.mod.json") {
+		expand(
+			version: project.version,
+			minecraft_version: project.minecraft_version,
+			fabric_loader_version: project.fabric_loader_version
+		)
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = Integer.parseInt(project.java_version)
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
+}
+
+jar {
+	archiveVersion = "${project.minecraft_display_version}-${project.mod_version}-fabric"
+
+	from(rootProject.file("LICENSE")) {
+		rename { "${it}_${project.mod_id}" }
+	}
+}
+
+tasks.named("sourcesJar") {
+	from(project(":common").sourceSets.main.allSource)
+}
+plugins {
+	id "net.fabricmc.fabric-loom" version "${loom_version}"
+	id "maven-publish"
+}
+
+version = rootProject.version
+group = rootProject.group
+
+base {
+	archivesName = project.mod_id
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	compileOnly project(path: ":common", configuration: "namedElements")
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"${project.mod_id}" {
+			sourceSet sourceSets.main
+			sourceSet project(":common").sourceSets.main
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java.srcDir project(":common").file("src/main/java")
+		resources.srcDir project(":common").file("src/main/resources")
+	}
+}
+
+processResources {
+	inputs.property "version", project.version
+	inputs.property "minecraft_version", project.minecraft_version
+	inputs.property "fabric_loader_version", project.fabric_loader_version
+
+	filesMatching("fabric.mod.json") {
+		expand(
+			version: project.version,
+			minecraft_version: project.minecraft_version,
+			fabric_loader_version: project.fabric_loader_version
+		)
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = Integer.parseInt(project.java_version)
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
+}
+
+jar {
+	archiveVersion = "${project.minecraft_display_version}-${project.mod_version}-fabric"
+
+	from(rootProject.file("LICENSE")) {
+		rename { "${it}_${project.mod_id}" }
+	}
+}
+
+tasks.named("sourcesJar") {
+	from(project(":common").sourceSets.main.allSource)
+}plugins {
+    id 'dev.architectury.loom'
+}
+
+architectury {
+    fabric()
+}
+
+loom {
+    silentMojangMappingsLicense()
+}
+
+configurations {
+    common {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    shadowCommon {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentFabric.extendsFrom common
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    common(project(path: ':common', configuration: 'namedElements')) { transitive false }
+    shadowCommon(project(path: ':common', configuration: 'transformProductionFabric')) { transitive false }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.minecraft_version
+    inputs.property 'fabric_loader_version', project.fabric_loader_version
+    inputs.property 'mod_authors', project.mod_authors
+    inputs.property 'mod_license', project.mod_license
+
+    filesMatching('fabric.mod.json') {
+        expand(
+            version: project.version,
+            minecraft_version: project.minecraft_version,
+            fabric_loader_version: project.fabric_loader_version,
+            mod_authors: project.mod_authors,
+            mod_license: project.mod_license
+        )
+    }
+}
+
+jar {
+    archiveBaseName = "${project.archives_base_name}-fabric"
+}
