@@ -69,8 +69,3 @@ jar {
 		rename { "${it}_${project.mod_id}" }
 	}
 }
-
-tasks.named("sourcesJar") {
-	from(rootProject.file("common/src/main/java"))
-	from(rootProject.file("common/src/main/resources"))
-}
