@@ -32,7 +32,7 @@ on:
         default: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   resolve:
@@ -145,7 +145,7 @@ PY
               exit 1
             fi
 
-            publishers_csv_raw="${default_publishers},sourceforge"
+            publishers_csv_raw="${default_publishers}"
             minecraft_version="${tag_minecraft_version}"
             release_tag="${tag_name}"
             version_title="${tag_name}"
@@ -220,24 +220,18 @@ PY
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build
-        run: ./gradlew build
-
-      - name: Capture build artifacts
-        uses: actions/upload-artifact@v4
-        with:
       - name: Build selected loader
         run: ./gradlew :${{ matrix.loader }}:build -Penabled_loaders=${{ matrix.loader }}
-          if-no-files-found: error
+
       - name: Capture loader artifact
-  publish:
-    runs-on: ubuntu-24.04
+        uses: actions/upload-artifact@v4
+        with:
           name: build-${{ matrix.loader }}
           path: ${{ matrix.loader }}/build/libs/*.jar
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish_artifacts)
+          if-no-files-found: error
 
-    steps:
+  publish:
+    runs-on: ubuntu-24.04
     needs: [resolve, build]
     if: needs.resolve.outputs.should_publish == 'true'
     strategy:
@@ -245,38 +239,43 @@ PY
       matrix:
         publisher: ${{ fromJson(needs.resolve.outputs.publishers_json) }}
         loader: ${{ fromJson(needs.resolve.outputs.loaders_json) }}
-        uses: actions/download-artifact@v4
-        with:
-          name: build-libs
-          path: build/libs
 
+    steps:
       - name: Download loader artifact
-        id: publish_meta
-        shell: bash
+        uses: actions/download-artifact@v5
+        with:
           name: build-${{ matrix.loader }}
           path: artifacts/${{ matrix.loader }}
 
+      - name: Compute publish metadata
+        id: publish_meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ needs.resolve.outputs.version_title }}" ]]; then
+            base_name="${{ needs.resolve.outputs.version_title }}"
+          else
+            base_name="${{ needs.resolve.outputs.minecraft_version }}-${{ needs.resolve.outputs.mod_version }}"
+          fi
+          version_name="${base_name}-${{ matrix.loader }}"
+          display_name="${version_name}"
+          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
+          echo "display_name=${display_name}" >> "$GITHUB_OUTPUT"
+
       - name: Publish to Modrinth
         if: matrix.publisher == 'modrinth'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: dispenser-breeding
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
-            build/libs/dispenserbreeding-*.jar
-
+            artifacts/${{ matrix.loader }}/*.jar
           name: ${{ steps.publish_meta.outputs.display_name }}
           version: ${{ steps.publish_meta.outputs.version_name }}
-
-          loaders: fabric
-            artifacts/${{ matrix.loader }}/*.jar
-
-          name: ${{ needs.resolve.outputs.version_title }}
-          version: ${{ needs.resolve.outputs.version_title }}
           version-type: release
           changelog: ${{ needs.resolve.outputs.version_description }}
-
           loaders: ${{ matrix.loader }}
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
-    needs: build
-    if: |
-      (github.event_name == 'push' && github.ref_name == 'main') ||
 
       - name: Placeholder for SourceForge publishing
         if: matrix.publisher == 'sourceforge'
@@ -284,11 +283,16 @@ PY
         run: |
           echo "SourceForge publishing not implemented yet."
           echo "Publisher abstraction is in place and this branch of the matrix is reserved."
-      (github.event_name == 'workflow_dispatch' && inputs.update_metadata)
+
   update-metadata:
-    steps:
+    runs-on: ubuntu-24.04
     needs: [resolve, build]
     if: needs.resolve.outputs.should_update_metadata == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Update Modrinth project description from README
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: |
