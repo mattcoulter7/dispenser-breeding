@@ -32,7 +32,7 @@ on:
         default: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   resolve:
@@ -173,6 +173,14 @@ jobs:
         run: |
           echo "SourceForge publishing not implemented yet."
           echo "Publisher abstraction is in place and this branch of the matrix is reserved."
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/${{ matrix.loader }}/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   update-metadata:
     runs-on: ubuntu-24.04
