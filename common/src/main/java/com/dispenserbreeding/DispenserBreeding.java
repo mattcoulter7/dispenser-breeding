@@ -1,17 +1,19 @@
 package com.dispenserbreeding;
 
 import com.dispenserbreeding.config.ConfigManager;
-import net.fabricmc.api.ModInitializer;
+import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class DispenserBreedingMod implements ModInitializer {
+public final class DispenserBreeding {
 	public static final String MOD_ID = "dispenserbreeding";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	@Override
-	public void onInitialize() {
-		ConfigManager.load();
-		LOGGER.info("Dispenser Breeding mod initialised.");
+	private DispenserBreeding() {
+	}
+
+	public static void init(Path configDirectory) {
+		ConfigManager.load(configDirectory);
+		LOGGER.info("Dispenser Breeding initialised.");
 	}
 }

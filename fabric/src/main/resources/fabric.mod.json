@@ -5,7 +5,7 @@
 	"name": "Dispenser Breeding",
 	"description": "Server-side dispenser breeding for animals.",
 	"authors": [
-		"You"
+		"Matthew Coulter"
 	],
 	"contact": {},
 	"license": "MIT",
@@ -13,15 +13,15 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.dispenserbreeding.DispenserBreedingMod"
+			"com.dispenserbreeding.fabric.DispenserBreedingFabric"
 		]
 	},
 	"mixins": [
 		"dispenserbreeding.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.19.2",
-		"minecraft": "~26.1.2",
+		"fabricloader": ">=${fabric_loader_version}",
+		"minecraft": "~${minecraft_version}",
 		"java": ">=25",
 		"fabric-api": "*"
 	}
