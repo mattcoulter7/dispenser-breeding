@@ -114,14 +114,12 @@ jobs:
       fail-fast: false
       matrix:
         publisher: ${{ fromJson(needs.resolve.outputs.publishers_json) }}
-        loader: ${{ fromJson(needs.resolve.outputs.loaders_json) }}
 
     steps:
-      - name: Download loader artifact
+      - name: Download all loader artifacts
         uses: actions/download-artifact@v5
         with:
-          name: build-${{ matrix.loader }}
-          path: artifacts/${{ matrix.loader }}
+          path: artifacts
 
       - name: Publish to Modrinth
         if: matrix.publisher == 'modrinth'
@@ -130,12 +128,12 @@ jobs:
           modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
-            artifacts/${{ matrix.loader }}/*.jar
+            artifacts/**/*.jar
           version: ${{ needs.resolve.outputs.version_title }}
           name: ${{ needs.resolve.outputs.version_description }}
           version-type: release
           changelog: ${{ github.event_name == 'release' && github.event.release.body || needs.resolve.outputs.version_description }}
-          loaders: ${{ matrix.loader }}
+          loaders: ${{ needs.resolve.outputs.loaders_csv }}
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
           dependencies: ${{ needs.resolve.outputs.publish_dependencies }}
 
