@@ -13,19 +13,20 @@ allprojects {
 }
 
 subprojects {
-	apply plugin: 'java'
 	apply plugin: 'architectury-plugin'
 	apply plugin: 'maven-publish'
 
-	java {
-		toolchain {
-			languageVersion = JavaLanguageVersion.of(25)
+	pluginManager.withPlugin('java') {
+		java {
+			toolchain {
+				languageVersion = JavaLanguageVersion.of(25)
+			}
+			withSourcesJar()
 		}
-		withSourcesJar()
-	}
 
-	tasks.withType(JavaCompile).configureEach {
-		options.release = 25
-		options.encoding = 'UTF-8'
+		tasks.withType(JavaCompile).configureEach {
+			options.release = 25
+			options.encoding = 'UTF-8'
+		}
 	}
 }
