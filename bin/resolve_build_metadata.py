@@ -70,7 +70,26 @@ def validate_loader_segment(value: str) -> None:
         )
 
 
+def format_loader_label(loaders: list[str]) -> str:
+    return " + ".join(loader.capitalize() for loader in loaders)
+
+
+def build_publish_dependencies(loaders: list[str]) -> str:
+    deps: list[str] = []
+
+    if "fabric" in loaders:
+        deps.append("fabric-api(required)")
+
+    return "\n".join(deps)
+
+
 def gha_output(key: str, value: str) -> None:
+    if "\n" in value:
+        print(f"{key}<<__GHA_OUTPUT__")
+        print(value)
+        print("__GHA_OUTPUT__")
+        return
+
     print(f"{key}={value}")
 
 
@@ -127,15 +146,14 @@ def main() -> int:
                 f"gradle.properties mod_version ({mod_version})."
             )
 
+        loaders = parse_csv(loaders_csv_raw)
+        loader_label = format_loader_label(loaders)
+
         publishers_csv_raw = default_publishers
         minecraft_version = tag_minecraft_version
         release_tag = tag_name
         version_title = tag_name
-        version_description = (
-            f"minecraft={tag_minecraft_version}; "
-            f"mod={tag_mod_version}; "
-            f"loaders={loaders_csv_raw}"
-        )
+        version_description = f"[{loader_label}] {tag_minecraft_version}-{tag_mod_version}"
         should_publish = "true"
         should_update_metadata = "false"
 
@@ -144,10 +162,10 @@ def main() -> int:
         publishers_csv_raw = os.getenv("INPUT_PUBLISHERS", "modrinth")
         minecraft_version = current_minecraft_version
         release_tag = ""
+        manual_loaders = parse_csv(loaders_csv_raw)
+        loader_label = format_loader_label(manual_loaders)
         version_title = f"manual-{ref_name}"
-        version_description = (
-            f"manual build for {minecraft_version}; loaders={loaders_csv_raw}"
-        )
+        version_description = f"[{loader_label}] {minecraft_version}-{mod_version}"
         should_publish = os.getenv("INPUT_PUBLISH_ARTIFACTS", "true").lower()
         should_update_metadata = os.getenv("INPUT_UPDATE_METADATA", "true").lower()
 
@@ -168,6 +186,7 @@ def main() -> int:
 
     loaders = parse_csv(loaders_csv)
     publishers = parse_csv(publishers_csv)
+    publish_dependencies = build_publish_dependencies(loaders)
 
     validate_unique(loaders, "loaders")
     validate_unique(publishers, "publishers")
@@ -183,6 +202,7 @@ def main() -> int:
     gha_output("release_tag", release_tag)
     gha_output("version_title", version_title)
     gha_output("version_description", version_description)
+    gha_output("publish_dependencies", publish_dependencies)
     gha_output("should_publish", should_publish)
     gha_output("should_update_metadata", should_update_metadata)
 

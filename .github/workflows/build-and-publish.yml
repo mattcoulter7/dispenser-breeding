@@ -47,6 +47,7 @@ jobs:
       release_tag: ${{ steps.resolve.outputs.release_tag }}
       version_title: ${{ steps.resolve.outputs.version_title }}
       version_description: ${{ steps.resolve.outputs.version_description }}
+      publish_dependencies: ${{ steps.resolve.outputs.publish_dependencies }}
       should_publish: ${{ steps.resolve.outputs.should_publish }}
       should_update_metadata: ${{ steps.resolve.outputs.should_update_metadata }}
 
@@ -122,35 +123,21 @@ jobs:
           name: build-${{ matrix.loader }}
           path: artifacts/${{ matrix.loader }}
 
-      - name: Compute publish metadata
-        id: publish_meta
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -n "${{ needs.resolve.outputs.version_title }}" ]]; then
-            base_name="${{ needs.resolve.outputs.version_title }}"
-          else
-            base_name="${{ needs.resolve.outputs.minecraft_version }}-${{ needs.resolve.outputs.mod_version }}"
-          fi
-          version_name="${base_name}-${{ matrix.loader }}"
-          display_name="${version_name}"
-          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
-          echo "display_name=${display_name}" >> "$GITHUB_OUTPUT"
-
       - name: Publish to Modrinth
         if: matrix.publisher == 'modrinth'
         uses: Kir-Antipov/mc-publish@v3.3
         with:
-          modrinth-id: dispenser-breeding
+          modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
             artifacts/${{ matrix.loader }}/*.jar
-          name: ${{ steps.publish_meta.outputs.display_name }}
-          version: ${{ steps.publish_meta.outputs.version_name }}
+          version: ${{ needs.resolve.outputs.version_title }}
+          name: ${{ needs.resolve.outputs.version_description }}
           version-type: release
-          changelog: ${{ needs.resolve.outputs.version_description }}
+          changelog: ${{ github.event_name == 'release' && github.event.release.body || needs.resolve.outputs.version_description }}
           loaders: ${{ matrix.loader }}
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
+          dependencies: ${{ needs.resolve.outputs.publish_dependencies }}
 
       - name: Placeholder for SourceForge publishing
         if: matrix.publisher == 'sourceforge'
