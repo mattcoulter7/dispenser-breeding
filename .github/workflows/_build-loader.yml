@@ -15,13 +15,26 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v3
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
+      - name: Set execute permission
+        run: chmod +x ./gradlew
       - name: Build for loader
         run: |
-          echo "Building for loader: ${{ inputs.loader }}"
+          ./gradlew :${{ inputs.loader }}:build
+      - name: Upload loader artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ inputs.loader }}
+          path: |
+            ${{ inputs.loader }}/build/libs/*.jar
+          if-no-files-found: error

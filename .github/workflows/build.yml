@@ -8,10 +8,10 @@ on:
       - '**.*.*'
   workflow_dispatch:
     inputs:
-      vendor:
+      loader:
         description: 'Choose loader or all'
         required: true
-        default: 'fabric'
+        default: 'all'
         type: choice
         options:
           - all
@@ -22,7 +22,7 @@ on:
 
 jobs:
   build-fabric:
-    if: "contains(github.event.inputs.vendor, 'fabric') || github.event.inputs.vendor == 'all'"
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'fabric' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: fabric
@@ -30,7 +30,7 @@ jobs:
       mod_version: ${{ github.sha }}
 
   build-forge:
-    if: "contains(github.event.inputs.vendor, 'forge') || github.event.inputs.vendor == 'all'"
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'forge' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: forge
@@ -38,7 +38,7 @@ jobs:
       mod_version: ${{ github.sha }}
 
   build-neoforge:
-    if: "contains(github.event.inputs.vendor, 'neoforge') || github.event.inputs.vendor == 'all'"
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'neoforge' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: neoforge
@@ -46,7 +46,7 @@ jobs:
       mod_version: ${{ github.sha }}
 
   build-quilt:
-    if: "contains(github.event.inputs.vendor, 'quilt') || github.event.inputs.vendor == 'all'"
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.loader == 'quilt' || inputs.loader == 'all' }}
     uses: ./.github/workflows/_build-loader.yml
     with:
       loader: quilt

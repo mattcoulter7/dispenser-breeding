@@ -6,39 +6,36 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      vendor:
-        description: 'Choose loader or all'
+      provider:
+        description: 'Choose provider or all'
         required: true
         default: 'all'
         type: choice
         options:
           - all
-          - fabric
-          - forge
-          - neoforge
-          - quilt
+          - modrinth
+          - curseforge
+          - github
 
 jobs:
-  metadata-fabric:
-    if: "contains(github.event.inputs.vendor, 'fabric') || github.event.inputs.vendor == 'all'"
-    uses: ./.github/workflows/_metadata-loader.yml
+  metadata-modrinth:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.provider == 'modrinth' || inputs.provider == 'all' }}
+    uses: ./.github/workflows/_metadata-provider.yml
     with:
-      loader: fabric
+      provider: modrinth
+      modrinth_project_slug: dispenser-breeding
+    secrets: inherit
 
-  metadata-forge:
-    if: "contains(github.event.inputs.vendor, 'forge') || github.event.inputs.vendor == 'all'"
-    uses: ./.github/workflows/_metadata-loader.yml
+  metadata-curseforge:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.provider == 'curseforge' || inputs.provider == 'all' }}
+    uses: ./.github/workflows/_metadata-provider.yml
     with:
-      loader: forge
+      provider: curseforge
+    secrets: inherit
 
-  metadata-neoforge:
-    if: "contains(github.event.inputs.vendor, 'neoforge') || github.event.inputs.vendor == 'all'"
-    uses: ./.github/workflows/_metadata-loader.yml
+  metadata-github:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.provider == 'github' || inputs.provider == 'all' }}
+    uses: ./.github/workflows/_metadata-provider.yml
     with:
-      loader: neoforge
-
-  metadata-quilt:
-    if: "contains(github.event.inputs.vendor, 'quilt') || github.event.inputs.vendor == 'all'"
-    uses: ./.github/workflows/_metadata-loader.yml
-    with:
-      loader: quilt
+      provider: github
+    secrets: inherit

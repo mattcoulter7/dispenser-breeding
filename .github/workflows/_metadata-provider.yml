@@ -1,0 +1,53 @@
+name: Metadata Provider (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      provider:
+        required: true
+        type: string
+      readme_path:
+        required: false
+        type: string
+        default: README.md
+      modrinth_project_slug:
+        required: false
+        type: string
+    secrets:
+      modrinth_token:
+        required: false
+      curseforge_token:
+        required: false
+      github_token:
+        required: false
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Modrinth metadata
+        if: ${{ inputs.provider == 'modrinth' && inputs.modrinth_project_slug != '' && secrets.modrinth_token != '' }}
+        env:
+          MODRINTH_TOKEN: ${{ secrets.modrinth_token }}
+          MODRINTH_PROJECT_SLUG: ${{ inputs.modrinth_project_slug }}
+          README_PATH: ${{ inputs.readme_path }}
+        shell: bash
+        run: |
+          BODY_JSON="$(jq -Rs '{body: .}' "$README_PATH")"
+          curl --fail-with-body \
+            -X PATCH \
+            -H "Authorization: $MODRINTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$BODY_JSON" \
+            "https://api.modrinth.com/v2/project/${MODRINTH_PROJECT_SLUG}"
+      - name: Metadata placeholder for CurseForge
+        if: ${{ inputs.provider == 'curseforge' }}
+        run: |
+          echo "Add CurseForge metadata update implementation here."
+      - name: Metadata placeholder for GitHub
+        if: ${{ inputs.provider == 'github' }}
+        run: |
+          echo "GitHub release metadata is managed in publish flow."

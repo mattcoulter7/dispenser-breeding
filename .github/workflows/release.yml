@@ -11,8 +11,8 @@ on:
       tag_name:
         description: 'Release tag name'
         required: true
-      vendor:
-        description: 'Loader or all'
+      loader:
+        description: 'Loader to build/publish, or all'
         required: true
         default: 'all'
         type: choice
@@ -22,24 +22,246 @@ on:
           - forge
           - neoforge
           - quilt
+      provider:
+        description: 'Provider to publish/update, or all'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - modrinth
+          - curseforge
+          - github
 
 jobs:
   validate-and-parse:
     runs-on: ubuntu-latest
     outputs:
-      parsed: ${{ steps.parse.outputs.parsed || '' }}
+      target_branch: ${{ steps.parse.outputs.target_branch }}
+      tag_name: ${{ steps.parse.outputs.tag_name }}
+      mc_version: ${{ steps.parse.outputs.mc_version }}
+      mod_version: ${{ steps.parse.outputs.mod_version }}
+      loaders_json: ${{ steps.parse.outputs.loaders_json }}
+      providers_json: ${{ steps.parse.outputs.providers_json }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Parse tag
         id: parse
+        shell: bash
         run: |
-          TAG="${{ github.event.release.tag_name || github.event.inputs.tag_name }}"
-          TARGET_BRANCH="${{ github.event.inputs.target_branch }}"
-          echo "{\"mc_version\": \"${TAG%%-*}\", \"tag\": \"$TAG\"}" > parsed.json
-          echo "parsed=$(cat parsed.json)" >> $GITHUB_OUTPUT
+          set -euo pipefail
 
-  build-and-publish:
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+            TARGET_BRANCH="${{ github.event.release.target_commitish }}"
+            LOADER_INPUT="all"
+            PROVIDER_INPUT="all"
+          else
+            TAG="${{ inputs.tag_name }}"
+            TARGET_BRANCH="${{ inputs.target_branch }}"
+            LOADER_INPUT="${{ inputs.loader }}"
+            PROVIDER_INPUT="${{ inputs.provider }}"
+          fi
+
+          if [[ "$TARGET_BRANCH" == "main" ]]; then
+            echo "Releases targeting main are not allowed." >&2
+            exit 1
+          fi
+
+          if [[ ! "$TARGET_BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Target branch must match x.y.z" >&2
+            exit 1
+          fi
+
+          if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
+            echo "Tag must match <mc-version>-<mod-version>-<loaders>" >&2
+            exit 1
+          fi
+
+          MC_VERSION="${BASH_REMATCH[1]}"
+          MOD_VERSION="${BASH_REMATCH[2]}"
+          LOADERS_RAW="${BASH_REMATCH[3]}"
+
+          if [[ "$MC_VERSION" != "$TARGET_BRANCH" ]]; then
+            echo "Tag minecraft version must equal target branch." >&2
+            exit 1
+          fi
+
+          declare -A SEEN
+          VALID_LOADERS=()
+          IFS='+' read -r -a PARSED_LOADERS <<< "$LOADERS_RAW"
+          for LOADER in "${PARSED_LOADERS[@]}"; do
+            case "$LOADER" in
+              fabric|forge|neoforge|quilt) ;;
+              *)
+                echo "Unsupported loader in tag: $LOADER" >&2
+                exit 1
+                ;;
+            esac
+
+            if [[ -n "${SEEN[$LOADER]:-}" ]]; then
+              echo "Duplicate loader in tag: $LOADER" >&2
+              exit 1
+            fi
+
+            SEEN[$LOADER]=1
+            VALID_LOADERS+=("$LOADER")
+          done
+
+          SELECTED_LOADERS=("${VALID_LOADERS[@]}")
+          if [[ "$LOADER_INPUT" != "all" ]]; then
+            FOUND=0
+            for LOADER in "${VALID_LOADERS[@]}"; do
+              if [[ "$LOADER" == "$LOADER_INPUT" ]]; then
+                FOUND=1
+                break
+              fi
+            done
+
+            if [[ "$FOUND" -ne 1 ]]; then
+              echo "Manual loader override '$LOADER_INPUT' is not present in tag loaders." >&2
+              exit 1
+            fi
+            SELECTED_LOADERS=("$LOADER_INPUT")
+          fi
+
+          case "$PROVIDER_INPUT" in
+            all)
+              SELECTED_PROVIDERS=(modrinth curseforge github)
+              ;;
+            modrinth|curseforge|github)
+              SELECTED_PROVIDERS=("$PROVIDER_INPUT")
+              ;;
+            *)
+              echo "Unsupported provider: $PROVIDER_INPUT" >&2
+              exit 1
+              ;;
+          esac
+
+          LOADERS_JSON="$(printf '%s\n' "${SELECTED_LOADERS[@]}" | jq -R . | jq -s .)"
+          PROVIDERS_JSON="$(printf '%s\n' "${SELECTED_PROVIDERS[@]}" | jq -R . | jq -s .)"
+
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
+          echo "mc_version=$MC_VERSION" >> "$GITHUB_OUTPUT"
+          echo "mod_version=$MOD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "loaders_json=$LOADERS_JSON" >> "$GITHUB_OUTPUT"
+          echo "providers_json=$PROVIDERS_JSON" >> "$GITHUB_OUTPUT"
+
+  build-fabric:
     needs: validate-and-parse
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug parsed
-        run: echo "Parsed: ${{ needs.validate-and-parse.outputs.parsed }}"
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'fabric') }}
+    uses: ./.github/workflows/_build-loader.yml
+    with:
+      loader: fabric
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+
+  build-forge:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'forge') }}
+    uses: ./.github/workflows/_build-loader.yml
+    with:
+      loader: forge
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+
+  build-neoforge:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'neoforge') }}
+    uses: ./.github/workflows/_build-loader.yml
+    with:
+      loader: neoforge
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+
+  build-quilt:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'quilt') }}
+    uses: ./.github/workflows/_build-loader.yml
+    with:
+      loader: quilt
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+
+  publish-fabric:
+    needs: [validate-and-parse, build-fabric]
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'fabric') }}
+    uses: ./.github/workflows/_publish-loader.yml
+    with:
+      loader: fabric
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+      providers_json: ${{ needs.validate-and-parse.outputs.providers_json }}
+      release_tag: ${{ needs.validate-and-parse.outputs.tag_name }}
+      modrinth_id: ${{ vars.MODRINTH_PROJECT_ID }}
+      curseforge_id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    secrets: inherit
+
+  publish-forge:
+    needs: [validate-and-parse, build-forge]
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'forge') }}
+    uses: ./.github/workflows/_publish-loader.yml
+    with:
+      loader: forge
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+      providers_json: ${{ needs.validate-and-parse.outputs.providers_json }}
+      release_tag: ${{ needs.validate-and-parse.outputs.tag_name }}
+      modrinth_id: ${{ vars.MODRINTH_PROJECT_ID }}
+      curseforge_id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    secrets: inherit
+
+  publish-neoforge:
+    needs: [validate-and-parse, build-neoforge]
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'neoforge') }}
+    uses: ./.github/workflows/_publish-loader.yml
+    with:
+      loader: neoforge
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+      providers_json: ${{ needs.validate-and-parse.outputs.providers_json }}
+      release_tag: ${{ needs.validate-and-parse.outputs.tag_name }}
+      modrinth_id: ${{ vars.MODRINTH_PROJECT_ID }}
+      curseforge_id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    secrets: inherit
+
+  publish-quilt:
+    needs: [validate-and-parse, build-quilt]
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.loaders_json), 'quilt') }}
+    uses: ./.github/workflows/_publish-loader.yml
+    with:
+      loader: quilt
+      mc_version: ${{ needs.validate-and-parse.outputs.mc_version }}
+      mod_version: ${{ needs.validate-and-parse.outputs.mod_version }}
+      providers_json: ${{ needs.validate-and-parse.outputs.providers_json }}
+      release_tag: ${{ needs.validate-and-parse.outputs.tag_name }}
+      modrinth_id: ${{ vars.MODRINTH_PROJECT_ID }}
+      curseforge_id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    secrets: inherit
+
+  metadata-modrinth:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.providers_json), 'modrinth') }}
+    uses: ./.github/workflows/_metadata-provider.yml
+    with:
+      provider: modrinth
+      modrinth_project_slug: dispenser-breeding
+    secrets: inherit
+
+  metadata-curseforge:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.providers_json), 'curseforge') }}
+    uses: ./.github/workflows/_metadata-provider.yml
+    with:
+      provider: curseforge
+    secrets: inherit
+
+  metadata-github:
+    needs: validate-and-parse
+    if: ${{ contains(fromJSON(needs.validate-and-parse.outputs.providers_json), 'github') }}
+    uses: ./.github/workflows/_metadata-provider.yml
+    with:
+      provider: github
+    secrets: inherit

@@ -12,7 +12,3 @@ dependencies {
 
     implementation "blue.endless:jankson:1.2.3"
 }
-
-loom {
-    accessWidenerPath = file("src/main/resources/dispenserbreeding.accesswidener")
-}

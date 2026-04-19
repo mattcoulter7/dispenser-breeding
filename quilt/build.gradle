@@ -23,7 +23,6 @@ dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "org.quiltmc:quilt-loader:${project.quilt_loader_version}"
-    modImplementation "org.quiltmc.quilted-fabric-api:quilted-fabric-api:${project.quilted_fabric_api_version}"
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowCommon(project(path: ':common', configuration: 'transformProductionQuilt')) { transitive false }
@@ -35,7 +34,9 @@ processResources {
         expand(
             version: project.version,
             minecraft_version: project.minecraft_version,
-            quilt_loader_version: project.quilt_loader_version
+            quilt_loader_version: project.quilt_loader_version,
+            mod_authors: project.mod_authors,
+            mod_license: project.mod_license
         )
     }
 }

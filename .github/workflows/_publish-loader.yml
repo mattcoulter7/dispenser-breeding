@@ -11,13 +11,79 @@ on:
       mod_version:
         required: true
         type: string
+      providers_json:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
+      modrinth_id:
+        required: false
+        type: string
+      curseforge_id:
+        required: false
+        type: string
+    secrets:
+      modrinth_token:
+        required: false
+      curseforge_token:
+        required: false
+      github_token:
+        required: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Publish artifact
+      - name: Download loader artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ inputs.loader }}
+          path: dist
+      - name: Resolve primary jar
+        id: jar
+        shell: bash
         run: |
-          echo "Publishing ${{ inputs.loader }} artifact for ${{ inputs.mc_version }} - ${{ inputs.mod_version }}"
+          JAR_PATH="$(find dist -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n1)"
+          if [[ -z "$JAR_PATH" ]]; then
+            echo "No publishable jar found for loader ${{ inputs.loader }}" >&2
+            exit 1
+          fi
+          echo "jar_path=$JAR_PATH" >> "$GITHUB_OUTPUT"
+      - name: Publish to Modrinth
+        if: ${{ contains(fromJSON(inputs.providers_json), 'modrinth') && inputs.modrinth_id != '' && secrets.modrinth_token != '' }}
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ inputs.modrinth_id }}
+          modrinth-token: ${{ secrets.modrinth_token }}
+          files: ${{ steps.jar.outputs.jar_path }}
+          version: ${{ inputs.mod_version }}+mc${{ inputs.mc_version }}-${{ inputs.loader }}
+          name: Dispenser Breeding ${{ inputs.mod_version }} (${{ inputs.loader }}, mc${{ inputs.mc_version }})
+          game-versions: ${{ inputs.mc_version }}
+          loaders: ${{ inputs.loader }}
+      - name: Publish to CurseForge
+        if: ${{ contains(fromJSON(inputs.providers_json), 'curseforge') && inputs.curseforge_id != '' && secrets.curseforge_token != '' }}
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ inputs.curseforge_id }}
+          curseforge-token: ${{ secrets.curseforge_token }}
+          files: ${{ steps.jar.outputs.jar_path }}
+          version: ${{ inputs.mod_version }}+mc${{ inputs.mc_version }}-${{ inputs.loader }}
+          name: Dispenser Breeding ${{ inputs.mod_version }} (${{ inputs.loader }}, mc${{ inputs.mc_version }})
+          game-versions: ${{ inputs.mc_version }}
+          loaders: ${{ inputs.loader }}
+      - name: Upload to GitHub Release
+        if: ${{ contains(fromJSON(inputs.providers_json), 'github') && secrets.github_token != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: ${{ steps.jar.outputs.jar_path }}
+          token: ${{ secrets.github_token }}
+      - name: No provider credentials notice
+        if: ${{ !contains(fromJSON(inputs.providers_json), 'modrinth') && !contains(fromJSON(inputs.providers_json), 'curseforge') && !contains(fromJSON(inputs.providers_json), 'github') }}
+        run: |
+          echo "No providers selected."
