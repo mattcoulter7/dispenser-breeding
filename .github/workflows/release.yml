@@ -9,7 +9,7 @@ on:
         description: 'Target release branch (release/x.y.z)'
         required: true
       tag_name:
-        description: 'Release tag name (<mod-version>-<loaders>)'
+        description: 'Release tag name (<mc-version>-<mod-version>-<loaders>)'
         required: true
       loader:
         description: 'Loader to build/publish, or all'
@@ -74,15 +74,21 @@ jobs:
             exit 1
           fi
 
-          MC_VERSION="${BASH_REMATCH[1]}"
+          BRANCH_MC_VERSION="${BASH_REMATCH[1]}"
 
-          if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
-            echo "Tag must match <mod-version>-<loaders>" >&2
+          if [[ ! "$TAG" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)-((fabric|forge|neoforge|quilt)(\+(fabric|forge|neoforge|quilt))*)$ ]]; then
+            echo "Tag must match <mc-version>-<mod-version>-<loaders>" >&2
             exit 1
           fi
 
-          MOD_VERSION="${BASH_REMATCH[1]}"
-          LOADERS_RAW="${BASH_REMATCH[2]}"
+          TAG_MC_VERSION="${BASH_REMATCH[1]}"
+          MOD_VERSION="${BASH_REMATCH[2]}"
+          LOADERS_RAW="${BASH_REMATCH[3]}"
+
+          if [[ "$TAG_MC_VERSION" != "$BRANCH_MC_VERSION" ]]; then
+            echo "Tag minecraft version '$TAG_MC_VERSION' does not match branch minecraft version '$BRANCH_MC_VERSION'." >&2
+            exit 1
+          fi
 
           declare -A SEEN
           VALID_LOADERS=()
@@ -140,7 +146,7 @@ jobs:
 
           echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
           echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
-          echo "mc_version=$MC_VERSION" >> "$GITHUB_OUTPUT"
+          echo "mc_version=$BRANCH_MC_VERSION" >> "$GITHUB_OUTPUT"
           echo "mod_version=$MOD_VERSION" >> "$GITHUB_OUTPUT"
           echo "loaders_json=$LOADERS_JSON" >> "$GITHUB_OUTPUT"
           echo "providers_json=$PROVIDERS_JSON" >> "$GITHUB_OUTPUT"

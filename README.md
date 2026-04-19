@@ -127,7 +127,7 @@ Works with:
   value: |
     fabric-api
     dispenserbreeding
-````
+```
 
 ---
 
@@ -176,11 +176,11 @@ Examples:
 
 Release tags follow:
 
-`<mod-version>-<loaders>`
+`<mc-version>-<mod-version>-<loaders>`
 
 Examples:
-- `1.0.0-fabric`
-- `1.0.0-fabric+forge+neoforge+quilt`
+- `26.1.0-1.0.8-fabric`
+- `26.1.0-1.0.8-fabric+forge+neoforge+quilt`
 
 ---
 
