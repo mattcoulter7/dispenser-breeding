@@ -1,0 +1,71 @@
+plugins {
+	id "net.fabricmc.fabric-loom" version "${loom_version}"
+	id "maven-publish"
+	id "dispenserbreeding.common-deps"
+}
+
+version = rootProject.version
+group = rootProject.group
+
+base {
+	archivesName = project.mod_id
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"${project.mod_id}" {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java.srcDir project(":common").file("src/main/java")
+		resources.srcDir project(":common").file("src/main/resources")
+	}
+}
+
+processResources {
+	inputs.property "version", project.version
+	inputs.property "minecraft_version", project.minecraft_version
+	inputs.property "fabric_loader_version", project.fabric_loader_version
+
+	filesMatching("fabric.mod.json") {
+		expand(
+			version: project.version,
+			minecraft_version: project.minecraft_version,
+			fabric_loader_version: project.fabric_loader_version
+		)
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release = Integer.parseInt(project.java_version)
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
+}
+
+jar {
+	archiveVersion = "${project.minecraft_display_version}-${project.mod_version}-fabric"
+
+	from(rootProject.file("LICENSE")) {
+		rename { "${it}_${project.mod_id}" }
+	}
+}
