@@ -6,8 +6,8 @@
 
 <p align="center">
   <!-- Build -->
-  <a href="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml">
-    <img src="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build-and-publish.yml/badge.svg" alt="Build Status">
+  <a href="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build.yml">
+    <img src="https://github.com/mattcoulter7/dispenser-breeding/actions/workflows/build.yml/badge.svg" alt="Build Status">
   </a>
 
   <!-- Modrinth -->
