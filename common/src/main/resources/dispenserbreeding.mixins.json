@@ -3,7 +3,6 @@
 	"package": "com.dispenserbreeding.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"AnimalMixin",
 		"ItemDispenserBehaviorMixin",
 		"MobMixin"
 	],
