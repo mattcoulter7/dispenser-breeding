@@ -74,6 +74,21 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
+    @GameTest(maxTicks = 200)
+    public void cowsBreedWithoutPathingIfClose(GameTestHelper helper) {
+        Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
+        Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4); // very close
+
+        placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
+
+        triggerDispenser(helper, 3, ENTITY_Y, 1);
+        helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+        helper.succeedWhen(() -> {
+            helper.assertTrue(countBabyCowsNear(cowA) >= 1, "Expected instant breeding when cows are adjacent");
+        });
+    }
+
 	private static void placeDispenser(
 		GameTestHelper helper,
 		int x,
