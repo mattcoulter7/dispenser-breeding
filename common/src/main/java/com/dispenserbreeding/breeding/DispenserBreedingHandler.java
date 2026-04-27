@@ -31,7 +31,7 @@ public final class DispenserBreedingHandler {
 			return false;
 		}
 
-		// Log #1 — selected animal
+		// Log #1: selected animal
 		DispenserBreeding.LOGGER.info(
 			"Selected animal id={} pos={} inLove={} age={} canFallInLove={}",
 			target.getId(),
@@ -44,7 +44,7 @@ public final class DispenserBreedingHandler {
 		stack.shrink(1);
 		target.setInLove(null);
 
-		// Log #3 — after feeding
+		// Log #3: after feeding
 		DispenserBreeding.LOGGER.info(
 			"After feed: id={} type={} loveTime={} isInLove={}",
 			target.getId(),
@@ -53,7 +53,7 @@ public final class DispenserBreedingHandler {
 			target.isInLove()
 		);
 
-		// Log #4 — nearby potential mates
+		// Log #4: nearby potential mates
 		List<Animal> nearby = level.getEntitiesOfClass(
 			Animal.class,
 			target.getBoundingBox().inflate(3),
@@ -68,7 +68,7 @@ public final class DispenserBreedingHandler {
 			);
 		}
 
-		// Log #7 — pair check (smoking gun)
+		// Log #7: pair check (smoking gun)
 		DispenserBreeding.LOGGER.info(
 			"PAIR CHECK: target={} hasMateNearby={}",
 			target.getId(),
@@ -113,7 +113,7 @@ public final class DispenserBreedingHandler {
 			animal -> isValidTarget(animal, breedingStack)
 		);
 
-		// Log #2 — all candidates
+		// Log #2: all candidates
 		DispenserBreeding.LOGGER.info("Candidates ({}):", candidates.size());
 		for (Animal a : candidates) {
 			DispenserBreeding.LOGGER.info(
