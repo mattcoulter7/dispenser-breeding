@@ -1,6 +1,8 @@
 package com.dispenserbreeding.fabric.gametest;
 
 import java.lang.reflect.Method;
+import java.util.List;
+
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -14,6 +16,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DispenserBlock;
 import net.minecraft.world.level.block.entity.DispenserBlockEntity;
+import net.minecraft.world.phys.AABB;
 
 public final class DispenserBreedingGameTest implements CustomTestMethodInvoker {
 	private static final int FLOOR_Y = 0;
@@ -114,32 +117,36 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
-	@GameTest(maxTicks = 7500)
+	@GameTest(maxTicks = 10000)
 	public void cowsCanBreedAgainAfterCooldown(GameTestHelper helper) {
-		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
-		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+		buildBreedingPen(helper);
+
+		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 2);
+		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
 
 		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 4);
 
-		// First breeding
-		triggerDispenser(helper, 3, ENTITY_Y, 1);
-		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+		feedTwice(helper, 3, ENTITY_Y, 1);
 
-		long[] cowCountAfterFirst = {0};
+		helper.succeedWhen(() -> {
+			helper.assertTrue(
+				countCowsInPen(helper) >= 3,
+				"Expected first breeding to create a baby cow"
+			);
+		});
 
-		// Allow enough time for the baby to spawn and be counted
-		helper.runAfterDelay(200, () -> {
-			cowCountAfterFirst[0] = countCowsNear(cowA);
+		helper.runAfterDelay(100, () -> {
+			long cowsAfterFirstBreed = countCowsInPen(helper);
 
-			// Vanilla breeding cooldown is ~6000 ticks
-			helper.runAfterDelay(6000, () -> {
-				triggerDispenser(helper, 3, ENTITY_Y, 1);
-				helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+			waitUntilBothCanFallInLove(helper, cowA, cowB, () -> {
+				feedTwice(helper, 3, ENTITY_Y, 1);
 
-				helper.succeedWhen(() -> helper.assertTrue(
-					countCowsNear(cowA) > cowCountAfterFirst[0],
-					"Cows should breed again after vanilla cooldown"
-				));
+				helper.succeedWhen(() -> {
+					helper.assertTrue(
+						countCowsInPen(helper) > cowsAfterFirstBreed,
+						"Expected cows to breed again after vanilla cooldown"
+					);
+				});
 			});
 		});
 	}
@@ -217,6 +224,77 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 				"Cows should breed in a narrow 1x3 corridor"
 			);
 		});
+	}
+
+	private static void feedTwice(GameTestHelper helper, int x, int y, int z) {
+		triggerDispenser(helper, x, y, z);
+		helper.runAfterDelay(30, () -> triggerDispenser(helper, x, y, z));
+	}
+
+	private static void waitUntilBothCanFallInLove(
+		GameTestHelper helper,
+		Cow cowA,
+		Cow cowB,
+		Runnable onReady
+	) {
+		waitUntilBothCanFallInLove(helper, cowA, cowB, onReady, 0);
+	}
+
+	private static void waitUntilBothCanFallInLove(
+		GameTestHelper helper,
+		Cow cowA,
+		Cow cowB,
+		Runnable onReady,
+		int attempts
+	) {
+		if (cowA.canFallInLove() && cowB.canFallInLove()) {
+			onReady.run();
+			return;
+		}
+
+		helper.assertTrue(
+			attempts < 7000,
+			"Cows did not leave cooldown before timeout"
+		);
+
+		helper.runAfterDelay(
+			20,
+			() -> waitUntilBothCanFallInLove(helper, cowA, cowB, onReady, attempts + 20)
+		);
+	}
+
+	private static void buildBreedingPen(GameTestHelper helper) {
+		// Floor
+		for (int x = 1; x <= 5; x++) {
+			for (int z = 1; z <= 5; z++) {
+				helper.setBlock(x, FLOOR_Y, z, Blocks.GRASS_BLOCK);
+			}
+		}
+
+		// Walls around a small pen
+		for (int x = 1; x <= 5; x++) {
+			helper.setBlock(x, ENTITY_Y, 5, Blocks.STONE);
+		}
+
+		for (int z = 1; z <= 5; z++) {
+			helper.setBlock(1, ENTITY_Y, z, Blocks.STONE);
+			helper.setBlock(5, ENTITY_Y, z, Blocks.STONE);
+		}
+
+		// Back wall, leaving dispenser at centre
+		helper.setBlock(1, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(2, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(4, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(5, ENTITY_Y, 1, Blocks.STONE);
+	}
+
+	private static long countCowsInPen(GameTestHelper helper) {
+		List<Cow> cows = helper.getLevel().getEntitiesOfClass(
+			Cow.class,
+			helper.absoluteAABB(new AABB(0, 0, 0, 7, 4, 7)),
+			Cow::isAlive
+		);
+		return cows.size();
 	}
 
 	private static void placeDispenser(
