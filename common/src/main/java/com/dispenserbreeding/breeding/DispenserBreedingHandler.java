@@ -3,6 +3,7 @@ package com.dispenserbreeding.breeding;
 import java.util.Comparator;
 import java.util.List;
 
+import com.dispenserbreeding.DispenserBreeding;
 import com.dispenserbreeding.config.ConfigManager;
 import net.minecraft.core.Direction;
 import net.minecraft.core.dispenser.BlockSource;
@@ -30,8 +31,54 @@ public final class DispenserBreedingHandler {
 			return false;
 		}
 
+		// Log #1 — selected animal
+		DispenserBreeding.LOGGER.info(
+			"Selected animal id={} pos={} inLove={} age={} canFallInLove={}",
+			target.getId(),
+			target.blockPosition(),
+			target.isInLove(),
+			target.getAge(),
+			target.canFallInLove()
+		);
+
 		stack.shrink(1);
 		target.setInLove(null);
+
+		// Log #3 — after feeding
+		DispenserBreeding.LOGGER.info(
+			"After feed: id={} type={} loveTime={} isInLove={}",
+			target.getId(),
+			target.getType(),
+			target.getInLoveTime(),
+			target.isInLove()
+		);
+
+		// Log #4 — nearby potential mates
+		List<Animal> nearby = level.getEntitiesOfClass(
+			Animal.class,
+			target.getBoundingBox().inflate(3),
+			a -> a != target
+		);
+		for (Animal other : nearby) {
+			DispenserBreeding.LOGGER.info(
+				"Nearby: id={} inLove={} canMate={}",
+				other.getId(),
+				other.isInLove(),
+				target.canMate(other)
+			);
+		}
+
+		// Log #7 — pair check (smoking gun)
+		DispenserBreeding.LOGGER.info(
+			"PAIR CHECK: target={} hasMateNearby={}",
+			target.getId(),
+			level.getEntitiesOfClass(
+				Animal.class,
+				target.getBoundingBox().inflate(3),
+				a -> a != target && a.isInLove() && target.canMate(a)
+			).size()
+		);
+
 		return true;
 	}
 
@@ -65,6 +112,19 @@ public final class DispenserBreedingHandler {
 			searchBox,
 			animal -> isValidTarget(animal, breedingStack)
 		);
+
+		// Log #2 — all candidates
+		DispenserBreeding.LOGGER.info("Candidates ({}):", candidates.size());
+		for (Animal a : candidates) {
+			DispenserBreeding.LOGGER.info(
+				"  - id={} dist={} inLove={} age={} canFallInLove={}",
+				a.getId(),
+				a.distanceToSqr(dispenseCenter),
+				a.isInLove(),
+				a.getAge(),
+				a.canFallInLove()
+			);
+		}
 
 		return candidates.stream()
 			.min(Comparator.comparingDouble(animal -> animal.distanceToSqr(dispenseCenter)))
