@@ -72,11 +72,15 @@ public final class DispenserBreedingHandler {
 	}
 
 	private static boolean isValidTarget(Animal animal, ItemStack breedingStack) {
-		return animal.isAlive()
-			&& !animal.isBaby()
-			&& !animal.isInLove()
-			&& animal.canFallInLove()
+		return isReadyToBreed(animal)
 			&& animal.isFood(breedingStack);
+	}
+
+	private static boolean isReadyToBreed(Animal animal) {
+		return animal.isAlive()
+			&& animal.getAge() == 0
+			&& !animal.isInLove()
+			&& animal.canFallInLove();
 	}
 
 	private static double rangeForward() {
