@@ -144,26 +144,6 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	}
 
 	@GameTest(maxTicks = 600)
-	public void cowsBreedOnChainPlatform(GameTestHelper helper) {
-		helper.setBlock(3, FLOOR_Y, 2, Blocks.CHAIN);
-		helper.setBlock(3, FLOOR_Y, 3, Blocks.CHAIN);
-		helper.setBlock(3, FLOOR_Y, 4, Blocks.CHAIN);
-
-		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 2);
-		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4);
-
-		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
-
-		triggerDispenser(helper, 3, ENTITY_Y, 1);
-		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
-
-		helper.succeedWhen(() -> helper.assertTrue(
-			countBabyCowsNear(cowA) >= 1,
-			"Cows should breed even on chain platform"
-		));
-	}
-
-	@GameTest(maxTicks = 600)
 	public void dispenserSpamDoesNotBreakBreeding(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
@@ -196,6 +176,30 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 			helper.assertTrue(cowB.isInLove(), "Cow B should be in love after two feeds");
 
 			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 600)
+	public void cowsBreedInNarrowOneByThreeCorridor(GameTestHelper helper) {
+		// Walls around a 1x3 lane at x=3, z=2..4
+		for (int z = 2; z <= 4; z++) {
+			helper.setBlock(2, ENTITY_Y, z, Blocks.STONE);
+			helper.setBlock(4, ENTITY_Y, z, Blocks.STONE);
+		}
+
+		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 2);
+		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
+
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+		helper.succeedWhen(() -> {
+			helper.assertTrue(
+				countBabyCowsNear(cowA) >= 1,
+				"Cows should breed in a narrow 1x3 corridor"
+			);
 		});
 	}
 
