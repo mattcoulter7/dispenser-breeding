@@ -7,11 +7,10 @@ import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -22,7 +21,7 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	private static final int FLOOR_Y = 0;
 	private static final int ENTITY_Y = 1;
 
-	@GameTest(timeoutTicks = 300)
+	@GameTest(maxTicks = 300)
 	public void oneCowEntersLoveModeButDoesNotBreed(GameTestHelper helper) {
 		Cow cow = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
 
@@ -30,17 +29,12 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		triggerDispenser(helper, 3, ENTITY_Y, 1);
 
 		helper.succeedWhen(() -> {
-			if (!cow.isInLove()) {
-				throw new GameTestAssertException("Expected cow to enter love mode");
-			}
-
-			if (countBabyCowsNear(cow) > 0) {
-				throw new GameTestAssertException("Expected no baby cow with one cow");
-			}
+			helper.assertTrue(cow.isInLove(), "Expected cow to enter love mode");
+			helper.assertFalse(countBabyCowsNear(cow) > 0, "Expected no baby cow with one cow");
 		});
 	}
 
-	@GameTest(timeoutTicks = 600)
+	@GameTest(maxTicks = 600)
 	public void twoCowsBreedAfterTwoDispenserFeeds(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
@@ -51,13 +45,11 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
 
 		helper.succeedWhen(() -> {
-			if (countBabyCowsNear(cowA) < 1) {
-				throw new GameTestAssertException("Expected a baby cow after two dispenser feeds");
-			}
+			helper.assertTrue(countBabyCowsNear(cowA) >= 1, "Expected a baby cow after two dispenser feeds");
 		});
 	}
 
-	@GameTest(timeoutTicks = 500)
+	@GameTest(maxTicks = 500)
 	public void separatedCowsEnterLoveModeButDoNotBreed(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		Cow cowB = helper.spawn(EntityType.COW, 6, ENTITY_Y, 3);
@@ -75,13 +67,8 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		triggerDispenser(helper, 6, ENTITY_Y, 1);
 
 		helper.runAfterDelay(120, () -> {
-			if (!cowA.isInLove() || !cowB.isInLove()) {
-				throw new GameTestAssertException("Expected both cows to enter love mode");
-			}
-
-			if (countBabyCowsNear(cowA) > 0) {
-				throw new GameTestAssertException("Expected no baby cow while cows are separated");
-			}
+			helper.assertTrue(cowA.isInLove() && cowB.isInLove(), "Expected both cows to enter love mode");
+			helper.assertFalse(countBabyCowsNear(cowA) > 0, "Expected no baby cow while cows are separated");
 
 			helper.succeed();
 		});
@@ -107,7 +94,7 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		DispenserBlockEntity dispenser = (DispenserBlockEntity) level.getBlockEntity(absolutePos);
 
 		if (dispenser == null) {
-			throw new GameTestAssertException("Expected dispenser block entity");
+			throw helper.assertionException("Expected dispenser block entity");
 		}
 
 		dispenser.setItem(0, new ItemStack(Items.WHEAT, wheatCount));
