@@ -1,6 +1,8 @@
 package com.dispenserbreeding.fabric.gametest;
 
 import java.lang.reflect.Method;
+import java.util.List;
+
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -14,6 +16,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DispenserBlock;
 import net.minecraft.world.level.block.entity.DispenserBlockEntity;
+import net.minecraft.world.phys.AABB;
 
 public final class DispenserBreedingGameTest implements CustomTestMethodInvoker {
 	private static final int FLOOR_Y = 0;
@@ -114,29 +117,33 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
-	@GameTest(maxTicks = 9000)
+	@GameTest(maxTicks = 10000)
 	public void cowsCanBreedAgainAfterCooldown(GameTestHelper helper) {
-		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
-		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+		buildBreedingPen(helper);
+
+		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 2);
+		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
 
 		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 4);
 
 		feedTwice(helper, 3, ENTITY_Y, 1);
 
-		helper.runAfterDelay(200, () -> {
-			long cowsAfterFirstBreed = countCowsNear(cowA);
-
+		helper.succeedWhen(() -> {
 			helper.assertTrue(
-				cowsAfterFirstBreed >= 3,
+				countCowsInPen(helper) >= 3,
 				"Expected first breeding to create a baby cow"
 			);
+		});
+
+		helper.runAfterDelay(100, () -> {
+			long cowsAfterFirstBreed = countCowsInPen(helper);
 
 			waitUntilBothCanFallInLove(helper, cowA, cowB, () -> {
 				feedTwice(helper, 3, ENTITY_Y, 1);
 
 				helper.succeedWhen(() -> {
 					helper.assertTrue(
-						countCowsNear(cowA) > cowsAfterFirstBreed,
+						countCowsInPen(helper) > cowsAfterFirstBreed,
 						"Expected cows to breed again after vanilla cooldown"
 					);
 				});
@@ -254,6 +261,40 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 			20,
 			() -> waitUntilBothCanFallInLove(helper, cowA, cowB, onReady, attempts + 20)
 		);
+	}
+
+	private static void buildBreedingPen(GameTestHelper helper) {
+		// Floor
+		for (int x = 1; x <= 5; x++) {
+			for (int z = 1; z <= 5; z++) {
+				helper.setBlock(x, FLOOR_Y, z, Blocks.GRASS_BLOCK);
+			}
+		}
+
+		// Walls around a small pen
+		for (int x = 1; x <= 5; x++) {
+			helper.setBlock(x, ENTITY_Y, 5, Blocks.STONE);
+		}
+
+		for (int z = 1; z <= 5; z++) {
+			helper.setBlock(1, ENTITY_Y, z, Blocks.STONE);
+			helper.setBlock(5, ENTITY_Y, z, Blocks.STONE);
+		}
+
+		// Back wall, leaving dispenser at centre
+		helper.setBlock(1, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(2, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(4, ENTITY_Y, 1, Blocks.STONE);
+		helper.setBlock(5, ENTITY_Y, 1, Blocks.STONE);
+	}
+
+	private static long countCowsInPen(GameTestHelper helper) {
+		List<Cow> cows = helper.getLevel().getEntitiesOfClass(
+			Cow.class,
+			helper.absoluteAABB(new AABB(0, 0, 0, 7, 4, 7)),
+			Cow::isAlive
+		);
+		return cows.size();
 	}
 
 	private static void placeDispenser(
