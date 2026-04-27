@@ -100,6 +100,13 @@ jobs:
       - name: Build selected loader
         run: ./gradlew :${{ matrix.loader }}:build -Penabled_loaders=${{ matrix.loader }}
 
+      - name: Print GameTest logs
+        if: failure()
+        shell: bash
+        run: |
+          find . -path "*/build/gametest/*" -type f -maxdepth 6 -print -exec tail -n 200 {} \; || true
+          find . -path "*/build/reports/*" -type f -maxdepth 8 -print || true
+
       - name: Store test reports
         if: failure()
         uses: actions/upload-artifact@v4
