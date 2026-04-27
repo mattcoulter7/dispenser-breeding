@@ -148,7 +148,7 @@ public final class GroundBreedingItemGoal extends Goal {
 
 	private boolean canAnimalBreedFromGround() {
 		return animal.isAlive()
-			&& !animal.isBaby()
+			&& animal.getAge() == 0
 			&& !animal.isInLove()
 			&& animal.canFallInLove();
 	}
