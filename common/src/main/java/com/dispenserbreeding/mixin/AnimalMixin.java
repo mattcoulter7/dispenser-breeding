@@ -11,25 +11,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Animal.class)
 public abstract class AnimalMixin {
 
-	// Log #5 — breeding actually happening
+	// Log #5: child spawn attempted (HEAD of spawnChildFromBreeding, not guaranteed success)
 	@Inject(method = "spawnChildFromBreeding", at = @At("HEAD"))
-	private void dispenserbreeding$logBreedSuccess(ServerLevel level, Animal partner, CallbackInfo ci) {
+	private void dispenserbreeding$logBreedAttempt(ServerLevel level, Animal partner, CallbackInfo ci) {
 		Animal self = (Animal) (Object) this;
 		DispenserBreeding.LOGGER.info(
-			"BREED SUCCESS: parent1={} parent2={}",
+			"BREED ATTEMPT: parent1={} parent2={}",
 			self.getId(),
 			partner.getId()
 		);
 	}
 
-	// Log #6 — love expiration tick
+	// Log #6: love expiration tick (every 20 ticks while in love)
 	@Inject(method = "tick", at = @At("TAIL"))
 	private void dispenserbreeding$logLoveTick(CallbackInfo ci) {
 		Animal self = (Animal) (Object) this;
 		if (self.isInLove() && self.getInLoveTime() % 20 == 0) {
 			DispenserBreeding.LOGGER.info(
-				"Tick: id={} loveTime={}",
+				"Love tick: id={} type={} pos={} loveTime={}",
 				self.getId(),
+				self.getType(),
+				self.blockPosition(),
 				self.getInLoveTime()
 			);
 		}
