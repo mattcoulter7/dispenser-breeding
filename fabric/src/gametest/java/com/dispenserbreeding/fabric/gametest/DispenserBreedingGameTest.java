@@ -1,8 +1,6 @@
 package com.dispenserbreeding.fabric.gametest;
 
 import java.lang.reflect.Method;
-import java.util.List;
-
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -74,20 +72,152 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
-    @GameTest(maxTicks = 200)
-    public void cowsBreedWithoutPathingIfClose(GameTestHelper helper) {
-        Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
-        Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4); // very close
+	@GameTest(maxTicks = 200)
+	public void cowsBreedWithoutPathingIfClose(GameTestHelper helper) {
+		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4);
 
-        placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
 
-        triggerDispenser(helper, 3, ENTITY_Y, 1);
-        helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
 
-        helper.succeedWhen(() -> {
-            helper.assertTrue(countBabyCowsNear(cowA) >= 1, "Expected instant breeding when cows are adjacent");
-        });
-    }
+		helper.succeedWhen(() -> {
+			helper.assertTrue(countBabyCowsNear(cowA) >= 1, "Expected instant breeding when cows are adjacent");
+		});
+	}
+
+	@GameTest(maxTicks = 400)
+	public void cowsDoNotReenterLoveDuringCooldown(GameTestHelper helper) {
+		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 4);
+
+		// First successful breed
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+		helper.runAfterDelay(100, () -> {
+			// Try to breed again while cooldown is active
+			triggerDispenser(helper, 3, ENTITY_Y, 1);
+			helper.runAfterDelay(4, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+			helper.runAfterDelay(20, () -> {
+				helper.assertFalse(
+					cowA.isInLove() || cowB.isInLove(),
+					"Cows should NOT re-enter love mode during cooldown"
+				);
+
+				helper.succeed();
+			});
+		});
+	}
+
+	@GameTest(maxTicks = 7500)
+	public void cowsCanBreedAgainAfterCooldown(GameTestHelper helper) {
+		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 4);
+
+		// First breeding
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+		long[] cowCountAfterFirst = {0};
+
+		// Allow enough time for the baby to spawn and be counted
+		helper.runAfterDelay(200, () -> {
+			cowCountAfterFirst[0] = countCowsNear(cowA);
+
+			// Vanilla breeding cooldown is ~6000 ticks
+			helper.runAfterDelay(6000, () -> {
+				triggerDispenser(helper, 3, ENTITY_Y, 1);
+				helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+				helper.succeedWhen(() -> helper.assertTrue(
+					countCowsNear(cowA) > cowCountAfterFirst[0],
+					"Cows should breed again after vanilla cooldown"
+				));
+			});
+		});
+	}
+
+	@GameTest(maxTicks = 600)
+	public void dispenserSpamDoesNotBreakBreeding(GameTestHelper helper) {
+		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 10);
+
+		for (int i = 0; i < 10; i++) {
+			int delay = i * 5;
+			helper.runAfterDelay(delay, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+		}
+
+		helper.succeedWhen(() -> helper.assertTrue(
+			countBabyCowsNear(cowA) >= 1,
+			"Dispenser spam should not prevent breeding"
+		));
+	}
+
+	@GameTest(maxTicks = 600)
+	public void dispenserFeedsTwoDistinctCows(GameTestHelper helper) {
+		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
+
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+
+		// After the first feed exactly one cow should be in love
+		helper.runAfterDelay(10, () -> {
+			helper.assertTrue(
+				cowA.isInLove() ^ cowB.isInLove(),
+				"Expected exactly one cow to be in love after first feed"
+			);
+
+			triggerDispenser(helper, 3, ENTITY_Y, 1);
+		});
+
+		// After the second feed both should be in love, or a baby already spawned
+		helper.runAfterDelay(40, () -> {
+			boolean bothFedOrBabyExists =
+				(cowA.isInLove() && cowB.isInLove()) || countBabyCowsNear(cowA) >= 1;
+
+			helper.assertTrue(
+				bothFedOrBabyExists,
+				"Expected both cows to be fed or a baby to exist after two feeds"
+			);
+
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 600)
+	public void cowsBreedInNarrowOneByThreeCorridor(GameTestHelper helper) {
+		// Walls around a 1x3 lane at x=3, z=2..4
+		for (int z = 2; z <= 4; z++) {
+			helper.setBlock(2, ENTITY_Y, z, Blocks.STONE);
+			helper.setBlock(4, ENTITY_Y, z, Blocks.STONE);
+		}
+
+		Cow cowA = helper.spawn(EntityType.COW, 3, ENTITY_Y, 2);
+		Cow cowB = helper.spawn(EntityType.COW, 3, ENTITY_Y, 4);
+
+		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
+
+		triggerDispenser(helper, 3, ENTITY_Y, 1);
+		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+
+		helper.succeedWhen(() -> {
+			helper.assertTrue(
+				countBabyCowsNear(cowA) >= 1,
+				"Cows should breed in a narrow 1x3 corridor"
+			);
+		});
+	}
 
 	private static void placeDispenser(
 		GameTestHelper helper,
@@ -121,15 +251,21 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	}
 
 	private static long countBabyCowsNear(Cow cow) {
-		List<Cow> nearbyCows = cow.level().getEntitiesOfClass(
+		return cow.level().getEntitiesOfClass(
 			Cow.class,
 			cow.getBoundingBox().inflate(8.0D),
 			Cow::isAlive
-		);
-
-		return nearbyCows.stream()
+		).stream()
 			.filter(Cow::isBaby)
 			.count();
+	}
+
+	private static long countCowsNear(Cow cow) {
+		return cow.level().getEntitiesOfClass(
+			Cow.class,
+			cow.getBoundingBox().inflate(8.0D),
+			Cow::isAlive
+		).size();
 	}
 
 	@Override
