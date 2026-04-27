@@ -158,7 +158,7 @@ jobs:
           modrinth-id: zlKk8V6R
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           files: |
-            artifacts/${{ matrix.loader }}/*.jar
+            artifacts/${{ matrix.loader }}/!(*-sources).jar
           version: ${{ steps.publish_meta.outputs.version_name }}
           name: ${{ steps.publish_meta.outputs.display_name }}
           version-type: release
