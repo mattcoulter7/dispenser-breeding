@@ -114,32 +114,32 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
-	@GameTest(maxTicks = 7500)
+	@GameTest(maxTicks = 9000)
 	public void cowsCanBreedAgainAfterCooldown(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
 
 		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 4);
 
-		// First breeding
-		triggerDispenser(helper, 3, ENTITY_Y, 1);
-		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+		feedTwice(helper, 3, ENTITY_Y, 1);
 
-		long[] cowCountAfterFirst = {0};
-
-		// Allow enough time for the baby to spawn and be counted
 		helper.runAfterDelay(200, () -> {
-			cowCountAfterFirst[0] = countCowsNear(cowA);
+			long cowsAfterFirstBreed = countCowsNear(cowA);
 
-			// Vanilla breeding cooldown is ~6000 ticks
-			helper.runAfterDelay(6000, () -> {
-				triggerDispenser(helper, 3, ENTITY_Y, 1);
-				helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
+			helper.assertTrue(
+				cowsAfterFirstBreed >= 3,
+				"Expected first breeding to create a baby cow"
+			);
 
-				helper.succeedWhen(() -> helper.assertTrue(
-					countCowsNear(cowA) > cowCountAfterFirst[0],
-					"Cows should breed again after vanilla cooldown"
-				));
+			waitUntilBothCanFallInLove(helper, cowA, cowB, () -> {
+				feedTwice(helper, 3, ENTITY_Y, 1);
+
+				helper.succeedWhen(() -> {
+					helper.assertTrue(
+						countCowsNear(cowA) > cowsAfterFirstBreed,
+						"Expected cows to breed again after vanilla cooldown"
+					);
+				});
 			});
 		});
 	}
@@ -217,6 +217,43 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 				"Cows should breed in a narrow 1x3 corridor"
 			);
 		});
+	}
+
+	private static void feedTwice(GameTestHelper helper, int x, int y, int z) {
+		triggerDispenser(helper, x, y, z);
+		helper.runAfterDelay(30, () -> triggerDispenser(helper, x, y, z));
+	}
+
+	private static void waitUntilBothCanFallInLove(
+		GameTestHelper helper,
+		Cow cowA,
+		Cow cowB,
+		Runnable onReady
+	) {
+		waitUntilBothCanFallInLove(helper, cowA, cowB, onReady, 0);
+	}
+
+	private static void waitUntilBothCanFallInLove(
+		GameTestHelper helper,
+		Cow cowA,
+		Cow cowB,
+		Runnable onReady,
+		int attempts
+	) {
+		if (cowA.canFallInLove() && cowB.canFallInLove()) {
+			onReady.run();
+			return;
+		}
+
+		helper.assertTrue(
+			attempts < 7000,
+			"Cows did not leave cooldown before timeout"
+		);
+
+		helper.runAfterDelay(
+			20,
+			() -> waitUntilBothCanFallInLove(helper, cowA, cowB, onReady, attempts + 20)
+		);
 	}
 
 	private static void placeDispenser(
