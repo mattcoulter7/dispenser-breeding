@@ -100,6 +100,16 @@ jobs:
       - name: Build selected loader
         run: ./gradlew :${{ matrix.loader }}:build -Penabled_loaders=${{ matrix.loader }}
 
+      - name: Store test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.loader }}
+          path: |
+            **/build/reports/
+            **/build/test-results/
+            **/build/gametest/
+
       - name: Capture loader artifact
         uses: actions/upload-artifact@v4
         with:
