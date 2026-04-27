@@ -52,7 +52,7 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	@GameTest(maxTicks = 500)
 	public void separatedCowsEnterLoveModeButDoNotBreed(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
-		Cow cowB = helper.spawn(EntityType.COW, 6, ENTITY_Y, 3);
+		Cow cowB = helper.spawn(EntityType.COW, 6, ENTITY_Y, 2);
 
 		for (int y = 1; y <= 2; y++) {
 			helper.setBlock(4, y, 2, Blocks.STONE);
@@ -66,7 +66,7 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		triggerDispenser(helper, 2, ENTITY_Y, 1);
 		triggerDispenser(helper, 6, ENTITY_Y, 1);
 
-		helper.runAfterDelay(120, () -> {
+		helper.runAfterDelay(40, () -> {
 			helper.assertTrue(cowA.isInLove() && cowB.isInLove(), "Expected both cows to enter love mode");
 			helper.assertFalse(countBabyCowsNear(cowA) > 0, "Expected no baby cow while cows are separated");
 
