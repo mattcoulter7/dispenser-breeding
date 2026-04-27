@@ -35,7 +35,7 @@
 
 # 🐄 Dispenser Breeding
 
-Dispenser Breeding adds simple, server-side breeding automation to Minecraft.
+Dispenser Breeding adds simple, server-side breeding automation to Minecraft (Server Side Only).
 
 Dispensers can instantly feed nearby animals using their normal breeding food, and animals can also detect valid breeding items dropped on the ground, walk to them, and consume them automatically.
 
