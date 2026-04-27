@@ -167,39 +167,6 @@ jobs:
           game-versions: ${{ needs.resolve.outputs.minecraft_version }}
           dependencies: ${{ steps.publish_meta.outputs.dependencies }}
 
-      - name: Set Modrinth version environment
-        if: matrix.publisher == 'modrinth'
-        shell: bash
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          VERSION_NUMBER: ${{ steps.publish_meta.outputs.version_name }}
-        run: |
-          set -euo pipefail
-
-          version_id="$(
-            curl --fail-with-body \
-              -H "Authorization: $MODRINTH_TOKEN" \
-              "https://api.modrinth.com/v2/project/zlKk8V6R/version" \
-            | python -c '
-          import json, os, sys
-          versions = json.load(sys.stdin)
-          target = os.environ["VERSION_NUMBER"]
-          for version in versions:
-              if version["version_number"] == target:
-                  print(version["id"])
-                  break
-          else:
-              raise SystemExit(f"Could not find Modrinth version: {target}")
-          '
-          )"
-
-          curl --fail-with-body \
-            -X PATCH \
-            -H "Authorization: $MODRINTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data '{"environment":"server_only"}' \
-            "https://api.modrinth.com/v2/version/${version_id}"
-
       - name: Placeholder for SourceForge publishing
         if: matrix.publisher == 'sourceforge'
         shell: bash
