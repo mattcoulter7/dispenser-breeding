@@ -1,8 +1,6 @@
 package com.dispenserbreeding.fabric.gametest;
 
 import java.lang.reflect.Method;
-import java.util.List;
-
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -116,7 +114,7 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		});
 	}
 
-	@GameTest(maxTicks = 1200)
+	@GameTest(maxTicks = 7500)
 	public void cowsCanBreedAgainAfterCooldown(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
@@ -127,17 +125,20 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 		triggerDispenser(helper, 3, ENTITY_Y, 1);
 		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
 
-		helper.runAfterDelay(200, () -> {
-			long babiesAfterFirst = countBabyCowsNear(cowA);
+		long[] cowCountAfterFirst = {0};
 
-			// Wait out the vanilla 600-tick breeding cooldown plus a buffer
-			helper.runAfterDelay(650, () -> {
+		// Allow enough time for the baby to spawn and be counted
+		helper.runAfterDelay(200, () -> {
+			cowCountAfterFirst[0] = countCowsNear(cowA);
+
+			// Vanilla breeding cooldown is ~6000 ticks
+			helper.runAfterDelay(6000, () -> {
 				triggerDispenser(helper, 3, ENTITY_Y, 1);
 				helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
 
 				helper.succeedWhen(() -> helper.assertTrue(
-					countBabyCowsNear(cowA) > babiesAfterFirst,
-					"Cows should breed again after cooldown"
+					countCowsNear(cowA) > cowCountAfterFirst[0],
+					"Cows should breed again after vanilla cooldown"
 				));
 			});
 		});
@@ -162,18 +163,33 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	}
 
 	@GameTest(maxTicks = 600)
-	public void dispenserTargetsBothCowsNotJustOne(GameTestHelper helper) {
+	public void dispenserFeedsTwoDistinctCows(GameTestHelper helper) {
 		Cow cowA = helper.spawn(EntityType.COW, 2, ENTITY_Y, 3);
 		Cow cowB = helper.spawn(EntityType.COW, 4, ENTITY_Y, 3);
 
 		placeDispenser(helper, 3, ENTITY_Y, 1, Direction.SOUTH, 2);
 
 		triggerDispenser(helper, 3, ENTITY_Y, 1);
-		helper.runAfterDelay(20, () -> triggerDispenser(helper, 3, ENTITY_Y, 1));
 
-		helper.runAfterDelay(60, () -> {
-			helper.assertTrue(cowA.isInLove(), "Cow A should be in love after two feeds");
-			helper.assertTrue(cowB.isInLove(), "Cow B should be in love after two feeds");
+		// After the first feed exactly one cow should be in love
+		helper.runAfterDelay(10, () -> {
+			helper.assertTrue(
+				cowA.isInLove() ^ cowB.isInLove(),
+				"Expected exactly one cow to be in love after first feed"
+			);
+
+			triggerDispenser(helper, 3, ENTITY_Y, 1);
+		});
+
+		// After the second feed both should be in love, or a baby already spawned
+		helper.runAfterDelay(40, () -> {
+			boolean bothFedOrBabyExists =
+				(cowA.isInLove() && cowB.isInLove()) || countBabyCowsNear(cowA) >= 1;
+
+			helper.assertTrue(
+				bothFedOrBabyExists,
+				"Expected both cows to be fed or a baby to exist after two feeds"
+			);
 
 			helper.succeed();
 		});
@@ -235,15 +251,21 @@ public final class DispenserBreedingGameTest implements CustomTestMethodInvoker 
 	}
 
 	private static long countBabyCowsNear(Cow cow) {
-		List<Cow> nearbyCows = cow.level().getEntitiesOfClass(
+		return cow.level().getEntitiesOfClass(
 			Cow.class,
 			cow.getBoundingBox().inflate(8.0D),
 			Cow::isAlive
-		);
-
-		return nearbyCows.stream()
+		).stream()
 			.filter(Cow::isBaby)
 			.count();
+	}
+
+	private static long countCowsNear(Cow cow) {
+		return cow.level().getEntitiesOfClass(
+			Cow.class,
+			cow.getBoundingBox().inflate(8.0D),
+			Cow::isAlive
+		).size();
 	}
 
 	@Override
