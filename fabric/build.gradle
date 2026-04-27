@@ -31,6 +31,14 @@ loom {
 	}
 }
 
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "dispenserbreeding-test"
+		eula = true
+	}
+}
+
 sourceSets {
 	main {
 		java.srcDir project(":common").file("src/main/java")
@@ -38,7 +46,7 @@ sourceSets {
 	}
 }
 
-processResources {
+tasks.withType(ProcessResources).configureEach {
 	inputs.property "version", project.version
 	inputs.property "minecraft_version", project.minecraft_version
 	inputs.property "fabric_loader_version", project.fabric_loader_version
